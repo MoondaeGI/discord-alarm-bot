@@ -4,7 +4,7 @@ import { Event } from './event';
 import { severityToColor } from '../util/color';
 import { toKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
-import { summarize, search } from '../util/llm';
+import { summarize as llmSummarize, search as llmSearch } from '../util/llm';
 
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
@@ -30,6 +30,30 @@ interface CveItem {
   description: string;
 }
 
+/**
+ * LLM이 만들어 줄 CVE 검색 스펙(JSON) 타입
+ */
+interface CveSearchSpec {
+  keywords?: string[];
+  severity?: string[]; // ["LOW","MEDIUM","HIGH","CRITICAL"]
+  dateRange?: {
+    start: string | null;
+    end: string | null;
+  } | null;
+  page?: {
+    pageNumber?: number;
+    pageSize?: number;
+    maxPages?: number;
+  } | null;
+  sort?: {
+    field?: 'published' | 'lastModified' | 'cvssScore';
+    direction?: 'asc' | 'desc';
+  } | null;
+}
+
+/**
+ * CVE 이벤트
+ */
 class CveEvent implements Event<CvePayload> {
   readonly options: EventOptions;
 
@@ -37,16 +61,18 @@ class CveEvent implements Event<CvePayload> {
     this.options = options;
   }
 
+  /**
+   * 알람용: RSS에서 최신 1개 가져와서 CvePayload로 변환
+   */
   async alarm(lastRunAt?: Date): Promise<CvePayload | null> {
     const url = new URL(this.options.url);
 
-    // lastRunAt 이후만 보려면 여기에서 쿼리 파라미터 추가
+    // lastRunAt 이후만 보려면 여기서 파라미터 추가 가능
     if (lastRunAt) {
       url.searchParams.set('pubStartDate', lastRunAt.toISOString());
     }
 
     const res = await fetch(url.toString());
-
     if (!res.ok) {
       throw new Error(`CVE API error: ${res.status} ${res.statusText}`);
     }
@@ -71,50 +97,101 @@ class CveEvent implements Event<CvePayload> {
     return this.buildPayload(json);
   }
 
-  async buildPayload(payload: CveItem): Promise<CvePayload | null> {
-    const summary = await this.summarize(payload);
-    const cveId = payload.title.split(' ')[0];
+  /**
+   * 공통 Payload 빌더
+   * - 입력이 RSS(CveItem) 이든
+   * - NVD 검색 결과(vuln: { cve: ... }) 이든
+   * 둘 다 처리 가능하게 만듦
+   */
+  async buildPayload(input: CveItem | any): Promise<CvePayload | null> {
+    let item: CveItem;
+    let metrics: any | undefined;
 
-    const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(cveId)}`;
-    try {
-      const res = await fetch(url);
+    // NVD 검색 결과 형태: { cve: { ... } }
+    if (input && typeof input === 'object' && 'cve' in input) {
+      const cve = input.cve;
+      const cveId: string = cve.id;
+      const published: string = cve.published ?? cve.publishedDate ?? '';
+      const link = `https://nvd.nist.gov/vuln/detail/${cveId}`;
 
-      if (!res.ok) throw new Error(`NVD CVSS API error: ${res.status} ${res.statusText}`);
+      const descEn =
+        cve.descriptions?.find((d: any) => d.lang === 'en')?.value ||
+        cve.descriptions?.[0]?.value ||
+        '';
 
-      const data = await res.json();
-      const vuln = data.vulnerabilities?.[0];
-      const metrics = vuln?.cve?.metrics;
-      if (!metrics) return null;
+      const titleBase =
+        cve.titles?.find((t: any) => t.lang === 'en')?.title || cve.titles?.[0]?.title || cveId;
 
-      const v31 = metrics.cvssMetricV31?.[0];
-      const v30 = metrics.cvssMetricV30?.[0];
-      const v2 = metrics.cvssMetricV2?.[0];
-
-      const source = v31 || v30 || v2;
-      if (!source) return null;
-
-      const cvssData = source.cvssData || source;
-
-      const severity = (cvssData.baseSeverity || source.baseSeverity || 'UNKNOWN').toUpperCase();
-      const scoreStr = String(cvssData.baseScore ?? '정보 없음');
-      const vectorStr = cvssData.vectorString ?? '벡터 없음';
-
-      return {
-        title: summary.title,
-        cveId,
-        severity,
-        scoreStr,
-        vectorStr,
-        summary: summary.summary,
-        link: payload.link,
-        publishedAt: new Date(payload.pubDate),
-        description: summary.desc,
+      item = {
+        id: cveId,
+        title: `${cveId} ${titleBase}`.trim(),
+        link,
+        pubDate: published,
+        description: descEn,
       };
-    } catch (e) {
-      throw new Error(`CVSS API error: ${e}`);
+
+      metrics = cve.metrics;
+    } else {
+      // RSS 형태(CveItem) 그대로
+      item = input as CveItem;
     }
+
+    const cveId = item.title.split(' ')[0];
+
+    // CVSS 정보 준비
+    if (!metrics) {
+      // RSS에서 온 경우: NVD API를 한 번 더 호출해서 metrics 채움
+      const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(
+        cveId,
+      )}`;
+
+      try {
+        const res = await fetch(url);
+
+        if (!res.ok) throw new Error(`NVD CVSS API error: ${res.status} ${res.statusText}`);
+
+        const data = await res.json();
+        const vuln = data.vulnerabilities?.[0];
+        metrics = vuln?.cve?.metrics;
+      } catch (e) {
+        throw new Error(`CVSS API error: ${e}`);
+      }
+    }
+
+    if (!metrics) return null;
+
+    const v31 = metrics.cvssMetricV31?.[0];
+    const v30 = metrics.cvssMetricV30?.[0];
+    const v2 = metrics.cvssMetricV2?.[0];
+
+    const source = v31 || v30 || v2;
+    if (!source) return null;
+
+    const cvssData = source.cvssData || source;
+
+    const severity = (cvssData.baseSeverity || source.baseSeverity || 'UNKNOWN').toUpperCase();
+    const scoreStr = String(cvssData.baseScore ?? '정보 없음');
+    const vectorStr = cvssData.vectorString ?? '벡터 없음';
+
+    // 한국어 요약/번역
+    const summary = await this.summarize(item);
+
+    return {
+      title: summary.title,
+      cveId,
+      severity,
+      scoreStr,
+      vectorStr,
+      summary: summary.summary,
+      link: item.link,
+      publishedAt: new Date(item.pubDate),
+      description: summary.desc,
+    };
   }
 
+  /**
+   * LLM으로 한국어 제목/설명/요약 생성
+   */
   async summarize(payload: CveItem): Promise<any> {
     const prompt = `
 다음 CVE 정보를 기반으로 한국어 JSON과 요약을 생성하세요.
@@ -139,10 +216,9 @@ ${JSON.stringify(payload, null, 2)}
 `;
 
     try {
-      const content = await summarize(prompt);
+      const content = await llmSummarize(prompt);
       if (!content) throw new Error('빈 응답');
 
-      // LLM이 JSON만 출력하도록 요청했으므로 바로 파싱 시도
       return JSON.parse(content);
     } catch (e) {
       console.error('요약/번역 생성 오류:', e);
@@ -154,14 +230,15 @@ ${JSON.stringify(payload, null, 2)}
     }
   }
 
+  /**
+   * 자연어 질문 → LLM으로 JSON spec 생성 → NVD 검색 → CvePayload[]
+   */
   async search(question: string): Promise<CvePayload[]> {
     const prompt = `
-다음 질문을 기반으로 CVE 정보를 검색하세요.
+다음 질문을 기반으로 CVE 정보를 검색하기 위한 "검색 스펙"을 JSON으로 만들어 주세요.
 
 ### 질문
 ${question}
-
-위 사용자의 질문을 기반으로 NVD(API: https://services.nvd.nist.gov/rest/json/cves/2.0)에 요청할 수 있는 CVE 검색용 쿼리(URL Query Parameters 형태)를 생성해 주세요.
 
 - 사용자의 질문을 기반으로 CVE 검색 스펙을 JSON 형태로 만들어라.
 - JSON에는 다음과 같은 필드를 사용할 수 있다:
@@ -171,21 +248,28 @@ ${question}
   - page: { pageNumber: number, pageSize: number, maxPages: number }
   - sort: { field: "published" | "lastModified" | "cvssScore", direction: "asc" | "desc" }
 
-- page.maxPages는 5를 넘는 값을 넣어도 클라이언트에서 최대 5로 잘린다.
-- 정렬이 명시되지 않으면 null 또는 필드를 생략해도 된다.
+규칙:
+- page.maxPages는 5를 초과하더라도, 실제 클라이언트에서는 최대 5페이지만 조회한다.
+- 정렬이 명시되지 않으면 sort 필드를 생략해도 된다.
 - 반드시 JSON만 출력하고, 주석이나 설명은 출력하지 마라.
 `;
 
+    let spec: CveSearchSpec;
     try {
-      const content = await search(prompt);
+      const content = await llmSearch(prompt);
       if (!content) throw new Error('빈 응답');
+      spec = JSON.parse(content) as CveSearchSpec;
     } catch (e) {
-      throw new Error(`검색 오류: ${e}`);
+      throw new Error(`검색 스펙 생성 오류: ${e}`);
     }
 
-    return [];
+    // 헬퍼 함수에 buildPayload를 넘겨서 실제 검색 수행
+    return searchCveWithSpec(spec, (input) => this.buildPayload(input));
   }
 
+  /**
+   * 디스코드 알람 포맷
+   */
   formatAlarm(payload: CvePayload): DiscordOutbound | null {
     return new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
@@ -201,8 +285,12 @@ ${question}
           name: '핵심 정보',
           value: [
             `• 제목(KR): ${payload.title || '정보 없음'}`,
-            `• 발행일(미국/현지): ${new Date(payload.publishedAt).toLocaleString('en-US', { timeZone: 'America/New_York' })}`,
-            `• 발행일(한국/KST): ${toKst(payload.publishedAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}`,
+            `• 발행일(미국/현지): ${new Date(payload.publishedAt).toLocaleString('en-US', {
+              timeZone: 'America/New_York',
+            })}`,
+            `• 발행일(한국/KST): ${toKst(payload.publishedAt).toLocaleString('ko-KR', {
+              timeZone: 'Asia/Seoul',
+            })}`,
           ].join('\n'),
         },
         {
@@ -219,4 +307,132 @@ ${question}
   }
 }
 
-export { CveEvent, CveEventOptions, CvePayload };
+export { CveEvent, CveEventOptions, CvePayload, CveSearchSpec };
+
+/* ────────────────────────────────
+ * 헬퍼 함수들 (클래스 밖)
+ * ────────────────────────────────
+ */
+
+/**
+ * LLM이 만든 JSON 스펙을 기반으로:
+ * - NVD API를 최대 5페이지까지 호출하고
+ * - 정렬 적용 후
+ * - CvePayload[]로 변환
+ */
+async function searchCveWithSpec(
+  spec: CveSearchSpec,
+  buildPayload: (input: any) => Promise<CvePayload | null>,
+): Promise<CvePayload[]> {
+  const pageSize = Math.max(1, Math.min(spec.page?.pageSize ?? 20, 200));
+  const maxPages = Math.min(spec.page?.maxPages ?? 1, 5);
+  const startPage = Math.max(1, spec.page?.pageNumber ?? 1);
+
+  const allVulns: any[] = [];
+
+  for (let i = 0; i < maxPages; i++) {
+    const pageIndex = startPage - 1 + i;
+    const startIndex = pageIndex * pageSize;
+
+    const url = buildNvdQueryUrl(spec, { startIndex, resultsPerPage: pageSize });
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      console.error(`NVD 검색 요청 실패: ${res.status} ${res.statusText}`);
+      break;
+    }
+
+    const data = await res.json();
+    const vulns = data.vulnerabilities ?? [];
+    if (!vulns.length) break;
+
+    allVulns.push(...vulns);
+
+    if (vulns.length < pageSize) break; // 마지막 페이지
+  }
+
+  const sorted = sortVulnerabilities(allVulns, spec.sort ?? undefined);
+
+  const payloads: CvePayload[] = [];
+  for (const vuln of sorted) {
+    const p = await buildPayload(vuln);
+    if (p) payloads.push(p);
+  }
+
+  return payloads;
+}
+
+/**
+ * JSON 스펙 + 페이징으로 NVD 쿼리 URL 생성
+ */
+function buildNvdQueryUrl(
+  spec: CveSearchSpec,
+  paging: { startIndex: number; resultsPerPage: number },
+): string {
+  const base = new URL('https://services.nvd.nist.gov/rest/json/cves/2.0');
+
+  // keywords → keywordSearch (공백 join)
+  if (Array.isArray(spec.keywords) && spec.keywords.length > 0) {
+    base.searchParams.set('keywordSearch', spec.keywords.join(' '));
+  }
+
+  // severity → cvssV3Severity (콤마 구분)
+  if (Array.isArray(spec.severity) && spec.severity.length > 0) {
+    base.searchParams.set('cvssV3Severity', spec.severity.join(','));
+  }
+
+  // dateRange → pubStartDate / pubEndDate
+  const start = spec.dateRange?.start;
+  const end = spec.dateRange?.end;
+  if (start) base.searchParams.set('pubStartDate', `${start}T00:00:00:000 UTC-00:00`);
+  if (end) base.searchParams.set('pubEndDate', `${end}T23:59:59:000 UTC-00:00`);
+
+  // 페이징
+  base.searchParams.set('startIndex', String(paging.startIndex));
+  base.searchParams.set('resultsPerPage', String(paging.resultsPerPage));
+
+  return base.toString();
+}
+
+/**
+ * sort 스펙에 따라 NVD vulnerabilities 배열 정렬
+ */
+function sortVulnerabilities(vulns: any[], sort?: CveSearchSpec['sort']): any[] {
+  if (!sort?.field) return vulns;
+  const dir = sort.direction === 'asc' ? 1 : -1;
+
+  return [...vulns].sort((a, b) => {
+    const cveA = a.cve;
+    const cveB = b.cve;
+
+    if (sort.field === 'published') {
+      const da = new Date(cveA?.published ?? 0).getTime();
+      const db = new Date(cveB?.published ?? 0).getTime();
+      return (da - db) * dir;
+    }
+
+    if (sort.field === 'lastModified') {
+      const da = new Date(cveA?.lastModified ?? 0).getTime();
+      const db = new Date(cveB?.lastModified ?? 0).getTime();
+      return (da - db) * dir;
+    }
+
+    if (sort.field === 'cvssScore') {
+      const scoreA =
+        cveA?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore ??
+        cveA?.metrics?.cvssMetricV30?.[0]?.cvssData?.baseScore ??
+        cveA?.metrics?.cvssMetricV2?.[0]?.baseScore ??
+        0;
+
+      const scoreB =
+        cveB?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore ??
+        cveB?.metrics?.cvssMetricV30?.[0]?.cvssData?.baseScore ??
+        cveB?.metrics?.cvssMetricV2?.[0]?.baseScore ??
+        0;
+
+      return (scoreA - scoreB) * dir;
+    }
+
+    return 0;
+  });
+}
