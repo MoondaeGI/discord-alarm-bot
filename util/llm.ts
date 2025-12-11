@@ -24,6 +24,20 @@ export async function search(prompt: string) {
   return completion.choices[0]?.message?.content?.trim();
 }
 
+// llm의 json응답 추출 함수
+export function extractJsonObject(text: string): string {
+  // ```json ... ``` 이런 거 다 무시하고,
+  // 첫 번째 { 부터 마지막 } 까지만 잘라서 JSON이라고 가정
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+
+  if (start === -1 || end === -1 || end < start) {
+    throw new Error('유효한 JSON 객체를 찾을 수 없습니다.');
+  }
+
+  return text.slice(start, end + 1);
+}
+
 const SUMMARY_PROMPT = `
 You are an Expert Summarization Engine specialized in cybersecurity, engineering, product analysis, and technical documentation.
 

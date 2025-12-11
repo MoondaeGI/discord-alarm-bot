@@ -12,6 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["events/**/*", "types/**/*"],
+  "include": ["bot.ts", "events/**/*", "types/**/*", "util/**/*", "config/**/*"],
   "exclude": ["dist", "node_modules"]
 }

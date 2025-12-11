@@ -2,9 +2,9 @@ import { EmbedBuilder } from '@discordjs/builders';
 import { DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { toKst } from '../util/time';
+import { toKst, toUtcIsoDate } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
-import { summarize as llmSummarize, search as llmSearch } from '../util/llm';
+import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
@@ -234,11 +234,16 @@ ${JSON.stringify(payload, null, 2)}
    * 자연어 질문 → LLM으로 JSON spec 생성 → NVD 검색 → CvePayload[]
    */
   async search(question: string): Promise<CvePayload[]> {
+    const now = new Date().toISOString();
+
     const prompt = `
 다음 질문을 기반으로 CVE 정보를 검색하기 위한 "검색 스펙"을 JSON으로 만들어 주세요.
 
 ### 질문
 ${question}
+
+### 현재 시간 (UTC)
+${now}
 
 - 사용자의 질문을 기반으로 CVE 검색 스펙을 JSON 형태로 만들어라.
 - JSON에는 다음과 같은 필드를 사용할 수 있다:
@@ -252,13 +257,17 @@ ${question}
 - page.maxPages는 5를 초과하더라도, 실제 클라이언트에서는 최대 5페이지만 조회한다.
 - 정렬이 명시되지 않으면 sort 필드를 생략해도 된다.
 - 반드시 JSON만 출력하고, 주석이나 설명은 출력하지 마라.
+- 특히, \`\`\`json 이나 \`\`\` 같은 코드 블록 문자를 절대 사용하지 마라.
+- 오직 순수 JSON 객체만 출력해라.
 `;
 
     let spec: CveSearchSpec;
     try {
       const content = await llmSearch(prompt);
       if (!content) throw new Error('빈 응답');
-      spec = JSON.parse(content) as CveSearchSpec;
+
+      const json = extractJsonObject(content);
+      spec = JSON.parse(json) as CveSearchSpec;
     } catch (e) {
       throw new Error(`검색 스펙 생성 오류: ${e}`);
     }
@@ -371,27 +380,50 @@ function buildNvdQueryUrl(
 ): string {
   const base = new URL('https://services.nvd.nist.gov/rest/json/cves/2.0');
 
-  // keywords → keywordSearch (공백 join)
-  if (Array.isArray(spec.keywords) && spec.keywords.length > 0) {
+  // ────────────────────────────────────────
+  // keywords (공백 합치기)
+  // ────────────────────────────────────────
+  if (spec.keywords && spec.keywords.length > 0) {
     base.searchParams.set('keywordSearch', spec.keywords.join(' '));
   }
 
-  // severity → cvssV3Severity (콤마 구분)
-  if (Array.isArray(spec.severity) && spec.severity.length > 0) {
-    base.searchParams.set('cvssV3Severity', spec.severity.join(','));
+  // ────────────────────────────────────────
+  // severity (NVD는 단일 값만 받음 → 배열이면 가장 높은 값 선택)
+  // ────────────────────────────────────────
+  if (spec.severity && spec.severity.length > 0) {
+    const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const normalized = spec.severity
+      .map((s) => s.toUpperCase())
+      .filter((s) => order.includes(s))
+      .sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+    if (normalized.length > 0) {
+      // 배열이 와도 단일 값만 보냄 (CRITICAL/HIGH 우선)
+      base.searchParams.set('cvssV3Severity', normalized[0]);
+    }
   }
 
-  // dateRange → pubStartDate / pubEndDate
-  const start = spec.dateRange?.start;
-  const end = spec.dateRange?.end;
-  if (start) base.searchParams.set('pubStartDate', `${start}T00:00:00:000 UTC-00:00`);
-  if (end) base.searchParams.set('pubEndDate', `${end}T23:59:59:000 UTC-00:00`);
+  // ────────────────────────────────────────
+  // 날짜 범위
+  // NVD 요구 형식: 2024-06-01T00:00:00.000Z
+  // ────────────────────────────────────────
+  if (spec.dateRange?.start) {
+    base.searchParams.set('pubStartDate', `${spec.dateRange.start}T00:00:00.000Z`);
+  }
 
+  if (spec.dateRange?.end) {
+    base.searchParams.set('pubEndDate', `${spec.dateRange.end}T23:59:59.999Z`);
+  }
+
+  // ────────────────────────────────────────
   // 페이징
+  // ────────────────────────────────────────
   base.searchParams.set('startIndex', String(paging.startIndex));
   base.searchParams.set('resultsPerPage', String(paging.resultsPerPage));
 
-  return base.toString();
+  const url = base.toString();
+  console.log('[NVD URL]', url);
+  return url;
 }
 
 /**

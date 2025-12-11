@@ -3,3 +3,4 @@
 .prettierignore
 node_modules
 state.db
+.cursor

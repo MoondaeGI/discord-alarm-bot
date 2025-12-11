@@ -9,3 +9,8 @@ export function toKst(value: Date | number | string): Date {
   const utcMs = date.getTime() + date.getTimezoneOffset() * 60_000;
   return new Date(utcMs + 9 * 60 * 60 * 1000);
 }
+
+export function toUtcIsoDate(dateStr: string, endOfDay = false) {
+  const kstDate = new Date(dateStr + (endOfDay ? 'T23:59:59.999+09:00' : 'T00:00:00.000+09:00'));
+  return kstDate.toISOString(); // → 자동 UTC 변환
+}
