@@ -19,6 +19,12 @@ export async function initDb() {
       cve_id TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS hacker_news (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      hacker_news_id TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `);
 }
 

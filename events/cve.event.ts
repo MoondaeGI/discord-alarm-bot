@@ -9,7 +9,7 @@ import { summarize as llmSummarize, search as llmSearch, extractJsonObject } fro
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
-  discordChannelId: '1234567890',
+  discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
   table: 'cve',
 };
 

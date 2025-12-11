@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { Client, Intents } from 'discord.js';
 import { Database } from 'sqlite';
 
-import { CveEvent } from './events/cve.event';
+import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
 import { getLastId, setLastId } from './util/database';
 import { initDb, db } from './config/sqlint.config';
@@ -77,9 +77,11 @@ async function main() {
     // 1) 알람용 이벤트 배열에 넣고
     // 2) 검색(/cve-search)에서도 재사용
     const cveEvent = new CveEvent();
+    const hackerNewsEvent = new HackerNewsEvent();
 
     const events: Event<any>[] = [
       cveEvent, // 필요하면 여기 다른 Event도 추가
+      hackerNewsEvent,
     ];
 
     console.log('이벤트 등록 및 스케줄링 시작');
