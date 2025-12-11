@@ -4,6 +4,7 @@ export interface EventOptions {
   llmSearchPrompt: string;
   url: string;
   discordChannelId: string;
+  table: string;
 }
 
 export interface EventPayload {

@@ -12,6 +12,7 @@ const CveEventOptions: EventOptions = {
   llmSearchPrompt: 'You are a helpful assistant that searches for CVE information.',
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
   discordChannelId: '1234567890',
+  table: 'cve',
 };
 
 interface CvePayload extends EventPayload {
