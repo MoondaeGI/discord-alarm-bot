@@ -15,14 +15,12 @@ export async function initDb() {
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS cve (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      cve_id TEXT NOT NULL,
+      id TEXT PRIMARY KEY,
       updated_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS hacker_news (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      hacker_news_id TEXT NOT NULL,
+      id TEXT PRIMARY KEY,
       updated_at TEXT NOT NULL
     );
   `);

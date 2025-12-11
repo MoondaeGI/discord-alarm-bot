@@ -6,7 +6,7 @@ import { toKst } from '../util/time';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 
 const HackerNewsEventOptions: EventOptions = {
-  intervalMs: 1000 * 60 * 10, // 10분마다
+  intervalMs: 1000 * 10, // 10분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
   table: 'hacker_news',
@@ -53,20 +53,16 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     const data = await res.json();
     const hits = Array.isArray(data.hits) ? data.hits : [];
 
-    const results: HackerNewsPayload[] = [];
-
     for (const hit of hits) {
       const title = hit.title ?? hit.story_title ?? '';
-      const tags = Array.isArray(hit._tags) ? hit._tags : [];
+      const link =
+        hit.url ?? hit.story_url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
-      // 🚫 기술 키워드 없는 글은 스킵
-      if (!isTechArticle(title, tags)) continue;
-
-      const payload = await this.buildPayload(hit);
-      if (payload) results.push(payload);
+      // ★ LLM 없이 기술/AI/보안 글만 필터링
+      if (!isTechArticle(title, link)) continue;
     }
 
-    return results[0] ?? null;
+    return this.buildPayload(hits[0]);
   }
 
   /**
@@ -196,34 +192,73 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
   }
 }
 
-const TECH_KEYWORDS = [
-  // 일반 기술
+const TECH_DOMAINS = [
+  'github.com',
+  'gitlab.com',
+  'medium.com',
+  'dev.to',
+  'cloudflare.com',
+  'aws.amazon.com',
+  'azure.microsoft.com',
+  'googleblog.com',
+  'engineering.linkedin.com',
+  'engineering.fb.com',
+  'arstechnica.com',
+  'linux.org',
+  'kernel.org',
+  'rust-lang.org',
+  'python.org',
+  'golang.org',
+  'webkit.org',
+  'mozilla.org',
+  'chromium.org',
+  'stackoverflow.blog',
+];
+
+const AI_DOMAINS = [
+  'openai.com',
+  'huggingface.co',
+  'anthropic.com',
+  'deepmind.com',
+  'pytorch.org',
+  'tensorflow.org',
+  'arxiv.org',
+  'kaggle.com',
+];
+
+const SECURITY_DOMAINS = [
+  'krebsonsecurity.com',
+  'bleepingcomputer.com',
+  'securityweek.com',
+  'nvd.nist.gov',
+  'cve.mitre.org',
+  'hackaday.com',
+  'malwarebytes.com',
+  'research.checkpoint.com',
+];
+
+const KEYWORD_TECH = [
   'software',
   'hardware',
   'programming',
   'developer',
-  'engineering',
-  'kernel',
+  'engineer',
   'linux',
-  'unix',
+  'kernel',
   'database',
-  'storage',
   'compiler',
   'gpu',
   'cpu',
   'chip',
-  'firmware',
-  'driver',
-  'browser',
-  'web',
+  'infra',
   'cloud',
-  'infrastructure',
-  'virtualization',
-  'wasm',
-  'llvm',
-  'network',
+  'server',
+  'architecture',
+  'performance',
+  'open source',
+];
 
-  // AI
+const KEYWORD_AI = [
   'ai',
   'artificial intelligence',
   'machine learning',
@@ -232,28 +267,45 @@ const TECH_KEYWORDS = [
   'llm',
   'transformer',
   'neural',
-
-  // 보안
-  'security',
-  'cybersecurity',
-  'vulnerability',
-  'exploit',
-  'hacking',
-  'malware',
-  'cve',
-  'rce',
-  'encryption',
 ];
 
-function isTechArticle(title: string, tags: string[]): boolean {
+const KEYWORD_SECURITY = [
+  'security',
+  'cybersecurity',
+  'exploit',
+  'vulnerability',
+  'cve',
+  'sql injection',
+  'malware',
+  'rce',
+  'xss',
+  '0-day',
+];
+
+function isTechByUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+
+    return (
+      TECH_DOMAINS.some((d) => host.includes(d)) ||
+      AI_DOMAINS.some((d) => host.includes(d)) ||
+      SECURITY_DOMAINS.some((d) => host.includes(d))
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isTechByTitle(title: string): boolean {
   const lower = title.toLowerCase();
 
-  // title에 기술 키워드 포함 여부
-  if (TECH_KEYWORDS.some((k) => lower.includes(k))) return true;
+  return (
+    KEYWORD_TECH.some((k) => lower.includes(k)) ||
+    KEYWORD_AI.some((k) => lower.includes(k)) ||
+    KEYWORD_SECURITY.some((k) => lower.includes(k))
+  );
+}
 
-  // HN tags로도 기술 글 여부 간접 판단 가능
-  if (tags.includes('show_hn')) return true; // 개발 프로젝트
-  if (tags.includes('ask_hn')) return false; // 기술 잡담은 제외
-
-  return false;
+export function isTechArticle(title: string, url: string): boolean {
+  return isTechByUrl(url) || isTechByTitle(title);
 }

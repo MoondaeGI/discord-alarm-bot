@@ -22,6 +22,10 @@ async function registerEvents(client: Client, db: Database, events: Event<any>[]
     const lastIdFromDb = await getLastId(event.options.table);
     let lastId: any = lastIdFromDb ? lastIdFromDb : undefined;
 
+    console.log('db', event.options.table);
+    console.log('lastIdFromDb', lastIdFromDb);
+    console.log('lastId', lastId);
+
     const runOnce = async () => {
       try {
         const payload = await event.alarm(lastId);
