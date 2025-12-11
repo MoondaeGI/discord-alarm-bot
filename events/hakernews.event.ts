@@ -6,7 +6,7 @@ import { toKst } from '../util/time';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 
 const HackerNewsEventOptions: EventOptions = {
-  intervalMs: 1000 * 60, // 10분마다
+  intervalMs: 1000 * 60 * 10, // 10분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
   table: 'hacker_news',
@@ -44,21 +44,29 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    * 주기 알람
    */
   async alarm(lastRunAt?: Date): Promise<HackerNewsPayload | null> {
-    const res = await fetch(this.options.url);
+    const res = await fetch(this.options.url); // front_page
     if (!res.ok) {
-      throw new Error(`HackerNews API error: ${res.status} ${res.statusText}`);
+      if (res.status >= 500) return null;
+      throw new Error(`HackerNews API error: ${res.status}`);
     }
 
     const data = await res.json();
-    const hits: HackerNewsApiHit[] = Array.isArray(data.hits) ? data.hits : [];
+    const hits = Array.isArray(data.hits) ? data.hits : [];
 
-    const payloads: HackerNewsPayload[] = [];
+    const results: HackerNewsPayload[] = [];
+
     for (const hit of hits) {
+      const title = hit.title ?? hit.story_title ?? '';
+      const tags = Array.isArray(hit._tags) ? hit._tags : [];
+
+      // 🚫 기술 키워드 없는 글은 스킵
+      if (!isTechArticle(title, tags)) continue;
+
       const payload = await this.buildPayload(hit);
-      if (payload) payloads.push(payload);
+      if (payload) results.push(payload);
     }
 
-    return payloads[0] ?? null;
+    return results[0] ?? null;
   }
 
   /**
@@ -91,8 +99,8 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    */
   async summarize(payload: HackerNewsPayload): Promise<string> {
     const prompt = [
-      '다음 Hacker News 글을 한국어로 2~3줄 정도로 요약해줘.',
-      '보안 / 클라우드 / AI 관련 이슈면 그 점을 강조해서 설명해줘.',
+      '다음 글의 핵심 내용을 한국어로 자연스럽게 요약해줘. 5~10줄 사이로 요약해줘.',
+      '주관적 의견 없이 사실 위주로 간결하게 정리해줘.',
       '',
       `제목: ${payload.title}`,
       `링크: ${payload.link}`,
@@ -102,7 +110,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
 
     const raw = await llmSummarize(prompt);
 
-    return raw ?? '';
+    return raw?.replace(/\. /g, '.\n').replace(/\.$/, '.') ?? '';
   }
 
   /**
@@ -153,21 +161,23 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    * Discord용 포맷 (CVE 형식 참고해서 Embed)
    */
   formatAlarm(payload: HackerNewsPayload): DiscordOutbound | null {
-    const description = (payload.summary ?? '').trim() || payload.title || '내용 없음';
-
-    const embed = new EmbedBuilder()
+    return new EmbedBuilder()
+      .setAuthor({
+        name: 'Hacker News',
+        iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
+      })
       .setTitle(payload.title)
       .setURL(payload.link)
-      .setDescription(description)
+      .setDescription(payload.summary)
       .addFields(
         {
           name: 'Points',
-          value: `${payload.points}`,
+          value: String(payload.points),
           inline: true,
         },
         {
           name: 'Comments',
-          value: `${payload.commentCount}`,
+          value: String(payload.commentCount),
           inline: true,
         },
         {
@@ -180,14 +190,70 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
           inline: false,
         },
       )
-      .setFooter({ text: `Hacker News • ${payload.author}` })
-      .setTimestamp(payload.publishedAt);
-
-    // CVE처럼 embeds 기반 DiscordOutbound 리턴
-    const outbound: DiscordOutbound = {
-      embeds: [embed],
-    };
-
-    return outbound;
+      .setFooter({ text: `작성자: ${payload.author}` })
+      .setTimestamp(payload.publishedAt)
+      .setColor(0xff6600); // HN 브랜드 색상
   }
+}
+
+const TECH_KEYWORDS = [
+  // 일반 기술
+  'software',
+  'hardware',
+  'programming',
+  'developer',
+  'engineering',
+  'kernel',
+  'linux',
+  'unix',
+  'database',
+  'storage',
+  'compiler',
+  'gpu',
+  'cpu',
+  'chip',
+  'firmware',
+  'driver',
+  'browser',
+  'web',
+  'cloud',
+  'infrastructure',
+  'virtualization',
+  'wasm',
+  'llvm',
+  'network',
+
+  // AI
+  'ai',
+  'artificial intelligence',
+  'machine learning',
+  'deep learning',
+  'gpt',
+  'llm',
+  'transformer',
+  'neural',
+
+  // 보안
+  'security',
+  'cybersecurity',
+  'vulnerability',
+  'exploit',
+  'hacking',
+  'malware',
+  'cve',
+  'rce',
+  'encryption',
+];
+
+function isTechArticle(title: string, tags: string[]): boolean {
+  const lower = title.toLowerCase();
+
+  // title에 기술 키워드 포함 여부
+  if (TECH_KEYWORDS.some((k) => lower.includes(k))) return true;
+
+  // HN tags로도 기술 글 여부 간접 판단 가능
+  if (tags.includes('show_hn')) return true; // 개발 프로젝트
+  if (tags.includes('ask_hn')) return false; // 기술 잡담은 제외
+
+  return false;
 }
