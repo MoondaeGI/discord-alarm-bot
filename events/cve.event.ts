@@ -4,12 +4,10 @@ import { Event } from './event';
 import { severityToColor } from '../util/color';
 import { toKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
-import { openai } from '../config/openai.config';
+import { summarize, search } from '../util/llm';
 
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
-  llmSummaryPrompt: 'You are a helpful assistant that summarizes CVE information.',
-  llmSearchPrompt: 'You are a helpful assistant that searches for CVE information.',
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
   discordChannelId: '1234567890',
   table: 'cve',
@@ -75,7 +73,6 @@ class CveEvent implements Event<CvePayload> {
 
   async buildPayload(payload: CveItem): Promise<CvePayload | null> {
     const summary = await this.summarize(payload);
-
     const cveId = payload.title.split(' ')[0];
 
     const url = `https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${encodeURIComponent(cveId)}`;
@@ -98,12 +95,16 @@ class CveEvent implements Event<CvePayload> {
 
       const cvssData = source.cvssData || source;
 
+      const severity = (cvssData.baseSeverity || source.baseSeverity || 'UNKNOWN').toUpperCase();
+      const scoreStr = String(cvssData.baseScore ?? '정보 없음');
+      const vectorStr = cvssData.vectorString ?? '벡터 없음';
+
       return {
         title: summary.title,
-        cveId: cveId,
-        severity: summary.severity,
-        scoreStr: cvssData.baseScore,
-        vectorStr: cvssData.vectorString,
+        cveId,
+        severity,
+        scoreStr,
+        vectorStr,
         summary: summary.summary,
         link: payload.link,
         publishedAt: new Date(payload.pubDate),
@@ -138,19 +139,7 @@ ${JSON.stringify(payload, null, 2)}
 `;
 
     try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4.1-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful cybersecurity assistant.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-      });
-
-      const content = completion.choices[0]?.message?.content?.trim();
+      const content = await summarize(prompt);
       if (!content) throw new Error('빈 응답');
 
       // LLM이 JSON만 출력하도록 요청했으므로 바로 파싱 시도
@@ -165,7 +154,35 @@ ${JSON.stringify(payload, null, 2)}
     }
   }
 
-  async search(params: any): Promise<CvePayload[]> {
+  async search(question: string): Promise<CvePayload[]> {
+    const prompt = `
+다음 질문을 기반으로 CVE 정보를 검색하세요.
+
+### 질문
+${question}
+
+위 사용자의 질문을 기반으로 NVD(API: https://services.nvd.nist.gov/rest/json/cves/2.0)에 요청할 수 있는 CVE 검색용 쿼리(URL Query Parameters 형태)를 생성해 주세요.
+
+- 사용자의 질문을 기반으로 CVE 검색 스펙을 JSON 형태로 만들어라.
+- JSON에는 다음과 같은 필드를 사용할 수 있다:
+  - keywords: string[]  // 검색 키워드
+  - severity: string[]  // ["LOW","MEDIUM","HIGH","CRITICAL"] 중 일부
+  - dateRange: { start: "YYYY-MM-DD" | null, end: "YYYY-MM-DD" | null }
+  - page: { pageNumber: number, pageSize: number, maxPages: number }
+  - sort: { field: "published" | "lastModified" | "cvssScore", direction: "asc" | "desc" }
+
+- page.maxPages는 5를 넘는 값을 넣어도 클라이언트에서 최대 5로 잘린다.
+- 정렬이 명시되지 않으면 null 또는 필드를 생략해도 된다.
+- 반드시 JSON만 출력하고, 주석이나 설명은 출력하지 마라.
+`;
+
+    try {
+      const content = await search(prompt);
+      if (!content) throw new Error('빈 응답');
+    } catch (e) {
+      throw new Error(`검색 오류: ${e}`);
+    }
+
     return [];
   }
 

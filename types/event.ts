@@ -1,7 +1,5 @@
 export interface EventOptions {
   intervalMs: number;
-  llmSummaryPrompt: string;
-  llmSearchPrompt: string;
   url: string;
   discordChannelId: string;
   table: string;
