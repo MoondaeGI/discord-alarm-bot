@@ -1,8 +1,10 @@
+import { Timezone } from './timezone';
+
 export interface EventOptions {
   intervalMs: number;
   url: string;
   discordChannelId: string;
-  table: string;
+  timezone: Timezone;
 }
 
 export interface EventPayload {

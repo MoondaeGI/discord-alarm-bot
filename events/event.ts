@@ -9,26 +9,18 @@ import type { EventOptions, EventPayload } from '../types/event';
 export interface Event<T extends EventPayload> {
   readonly options: EventOptions;
 
-  /**
-   * 주기적으로 호출되는 알람 함수
-   * - 새 이벤트가 있으면 payload 반환
-   * - 없으면 "보낼 게 없는 상태"를 표현(널/빈배열 등)하도록 구현체에서 정의
-   */
+  // 최신 이벤트 JSON 반환
   alarm(lastRunAt?: Date): Promise<T | null>;
 
-  /**
-   * 필요할 때만 쓰는 검색 기능 (slash command 등)
-   * 구현 안 해도 됨
-   */
+  // 검색 기능능
   search?(params: any): Promise<T[]>;
 
+  // LLM 이벤트 요약
   summarize(payload: any): Promise<any>;
 
+  // json -> payload 변환
   buildPayload(payload: any): Promise<T | null>;
 
-  /**
-   * alarm 결과를 Discord로 보낼 수 있는 형태로 변환
-   * - null을 반환하면 "전송할 메시지 없음"으로 취급
-   */
-  formatAlarm(payload: T): DiscordOutbound | null;
+  // 디스코드로 출력할 모양 변환
+  format(payload: T): DiscordOutbound | null;
 }

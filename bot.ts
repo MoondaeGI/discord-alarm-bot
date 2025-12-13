@@ -1,54 +1,36 @@
 // src/bot.ts
 import 'dotenv/config';
 import { Client, Intents } from 'discord.js';
-import { Database } from 'sqlite';
 
 import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
-import { getLastId, setLastId } from './util/database';
-import { initDb, db } from './config/sqlint.config';
 import { sendToDiscordChannel } from './util/discord';
-import { logError, logPayload } from './util/log';
+import { logError } from './util/log';
 
 // ───────────────────────────────────
 // 이벤트 등록/실행 핸들러
 // ───────────────────────────────────
-async function registerEvents(client: Client, db: Database, events: Event<any>[]): Promise<void> {
+async function registerEvents(client: Client, events: Event<any>[]): Promise<void> {
   for (const event of events) {
     const eventName = event.constructor.name;
     const interval = event.options.intervalMs;
 
-    // DB에서 lastId 복원
-    const lastIdFromDb = await getLastId(event.options.table);
-    let lastId: any = lastIdFromDb ? lastIdFromDb : undefined;
-
-    console.log('db', event.options.table);
-    console.log('lastIdFromDb', lastIdFromDb);
-    console.log('lastId', lastId);
-
     const runOnce = async () => {
       try {
-        const payload = await event.alarm(lastId);
+        const payload = await event.alarm();
         if (!payload) {
           console.log(`[${eventName}] 전송할 payload 없음`);
           return;
         }
 
-        const msg = event.formatAlarm(payload);
+        const msg = event.format(payload);
         if (!msg) {
-          console.log(`[${eventName}] formatAlarm 결과 없음`);
+          console.log(`[${eventName}] format 결과 없음`);
           return;
         }
 
         await sendToDiscordChannel(client, event.options.discordChannelId, msg);
 
-        const newId = (payload as any).cveId ?? (payload as any).id ?? lastId;
-        if (newId) {
-          lastId = newId;
-          await setLastId(event.options.table, newId);
-        }
-
-        logPayload(`${eventName}:sent`, { lastId });
         console.log(`[${eventName}] 알람 전송 완료`);
       } catch (err) {
         logError(`${eventName}:runOnce`, err);
@@ -68,8 +50,6 @@ async function registerEvents(client: Client, db: Database, events: Event<any>[]
 // 메인 엔트리 포인트
 // ───────────────────────────────────
 async function main() {
-  await initDb();
-
   const client = new Client({
     intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
   });
@@ -89,7 +69,7 @@ async function main() {
     ];
 
     console.log('이벤트 등록 및 스케줄링 시작');
-    void registerEvents(client, db as Database, events);
+    void registerEvents(client, events);
 
     console.log('이벤트 등록 및 스케줄링 완료');
   });
@@ -116,9 +96,9 @@ async function main() {
         return;
       }
 
-      // 너무 많을 수 있으니 상위 3개까지만 보여주기
-      const top = results.slice(0, 3);
-      const embeds = top.map((p) => cveEventForSearch.formatAlarm(p)).filter((e): e is any => !!e);
+      // 너무 많을 수 있으니 상위 5개까지만 보여주기
+      const top = results.slice(0, 5);
+      const embeds = top.map((p) => cveEventForSearch.format(p)).filter((e): e is any => !!e);
 
       await interaction.editReply({ embeds });
     } catch (err) {

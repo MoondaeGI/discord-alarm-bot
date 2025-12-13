@@ -1,8 +1,8 @@
 import { EmbedBuilder } from '@discordjs/builders';
-import { DiscordOutbound, EventOptions, EventPayload } from '../types';
+import { DiscordOutbound, EventOptions, EventPayload, Timezone } from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { toKst, toUtcIsoDate } from '../util/time';
+import { toKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 
@@ -10,7 +10,7 @@ const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
-  table: 'cve',
+  timezone: 'Asia/Seoul' as Timezone,
 };
 
 interface CvePayload extends EventPayload {
@@ -279,7 +279,7 @@ ${now}
   /**
    * 디스코드 알람 포맷
    */
-  formatAlarm(payload: CvePayload): DiscordOutbound | null {
+  format(payload: CvePayload): DiscordOutbound | null {
     return new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
       .setURL(payload.link)

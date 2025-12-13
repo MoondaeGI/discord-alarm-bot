@@ -9,7 +9,7 @@ const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 10, // 10분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
-  table: 'hacker_news',
+  timezone: 'Asia/Seoul',
 };
 
 interface HackerNewsApiHit {
@@ -156,7 +156,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
   /**
    * Discord용 포맷 (CVE 형식 참고해서 Embed)
    */
-  formatAlarm(payload: HackerNewsPayload): DiscordOutbound | null {
+  format(payload: HackerNewsPayload): DiscordOutbound | null {
     return new EmbedBuilder()
       .setAuthor({
         name: 'Hacker News',
