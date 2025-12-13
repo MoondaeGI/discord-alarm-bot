@@ -9,6 +9,7 @@ import { registerEvents } from './handler';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
+import { pingCommand } from './commands';
 
 const port = process.env.PORT || 3000;
 const publicDir = path.resolve(process.cwd(), 'public');
@@ -127,11 +128,7 @@ async function main() {
 
       return;
     } else if (interaction.commandName === 'ping') {
-      const message = `나나미짱 살아있어요! ${Date.now() - interaction.createdTimestamp}ms`;
-      await interaction.reply(message);
-      logInfo(message);
-
-      return;
+      await pingCommand.execute(interaction);
     }
   });
 
