@@ -95,44 +95,43 @@ async function main() {
     logInfo('이벤트 등록 및 스케줄링 완료');
   });
 
-  client.on('ping', async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
-    const message = `나나미짱 살아있어요! ${Date.now() - interaction.createdTimestamp}ms`;
-
-    await interaction.reply(`Pong! ${Date.now() - interaction.createdTimestamp}ms`);
-    logInfo(`Ping: ${Date.now() - interaction.createdTimestamp}ms`);
-  });
-
   // ───────────────────────────────────
   // 슬래시 커맨드 핸들러 (/cve-search)
   // ───────────────────────────────────
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName !== 'cve-search') return;
+    if (interaction.commandName === 'cve-search') {
+      const question = interaction.options.getString('question', true);
 
-    const question = interaction.options.getString('question', true);
+      await interaction.deferReply();
 
-    await interaction.deferReply();
+      try {
+        const cveEventForSearch = new CveEvent();
+        const results = await cveEventForSearch.search(question);
 
-    try {
-      const cveEventForSearch = new CveEvent();
-      const results = await cveEventForSearch.search(question);
+        if (!results.length) {
+          await interaction.editReply('검색 결과가 없습니다.');
+          return;
+        }
 
-      if (!results.length) {
-        await interaction.editReply('검색 결과가 없습니다.');
-        return;
+        // 너무 많을 수 있으니 상위 5개까지만 보여주기
+        const top = results.slice(0, 5);
+        const embeds = top.map((p) => cveEventForSearch.format(p)).filter((e): e is any => !!e);
+
+        await interaction.editReply({ embeds });
+      } catch (err) {
+        logError('CveEvent:search', err);
+        await interaction.editReply('검색 처리 중 오류가 발생했습니다.');
       }
 
-      // 너무 많을 수 있으니 상위 5개까지만 보여주기
-      const top = results.slice(0, 5);
-      const embeds = top.map((p) => cveEventForSearch.format(p)).filter((e): e is any => !!e);
+      return;
+    } else if (interaction.commandName === 'ping') {
+      const message = `나나미짱 살아있어요! ${Date.now() - interaction.createdTimestamp}ms`;
+      await interaction.reply(message);
+      logInfo(message);
 
-      await interaction.editReply({ embeds });
-    } catch (err) {
-      logError('CveEvent:search', err);
-      await interaction.editReply('검색 처리 중 오류가 발생했습니다.');
+      return;
     }
   });
 
