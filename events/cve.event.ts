@@ -8,7 +8,7 @@ import { summarize as llmSummarize, search as llmSearch, extractJsonObject } fro
 import { logFetchList } from '../util/log';
 
 const CveEventOptions: EventOptions = {
-  intervalMs: 1000 * 60 * 60 * 24,
+  intervalMs: 1000 * 60 * 10,
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
   timezone: 'UTC',

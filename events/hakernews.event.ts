@@ -7,7 +7,7 @@ import { summarize as llmSummarize, search as llmSearch, extractJsonObject } fro
 import { logFetchList } from '../util/log';
 
 const HackerNewsEventOptions: EventOptions = {
-  intervalMs: 1000 * 10, // 10분마다
+  intervalMs: 1000 * 60 * 5, // 5분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
   timezone: 'UTC',
@@ -99,7 +99,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    */
   async summarize(payload: HackerNewsPayload): Promise<string> {
     const prompt = [
-      '다음 글의 핵심 내용을 한국어로 자연스럽게 요약해줘. 5~10줄 사이로 요약해줘.',
+      '다음 글의 핵심 내용을 한국어로 자연스럽게 요약해줘. 3~5줄 사이로 요약해줘.',
       '주관적 의견 없이 사실 위주로 간결하게 정리해줘.',
       '',
       `제목: ${payload.title}`,
@@ -161,12 +161,19 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    * Discord용 포맷 (CVE 형식 참고해서 Embed)
    */
   format(payload: HackerNewsPayload): DiscordOutbound | null {
+    const rawTitle = (payload.title ?? '').trim();
+    const title =
+      rawTitle.length > 256 ? `${rawTitle.slice(0, 253)}...` : rawTitle || 'Untitled (Hacker News)';
+
+    console.log('title', title);
+    console.log('payload', payload);
+
     const embed = new EmbedBuilder()
       .setAuthor({
         name: 'Hacker News',
         iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
       })
-      .setTitle(payload.title)
+      .setTitle(title)
       .setURL(payload.link)
       .setDescription(payload.summary)
       .addFields(

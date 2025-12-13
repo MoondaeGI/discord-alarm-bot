@@ -25,18 +25,20 @@ async function registerEvents(client: Client, events: Event<any>[]): Promise<voi
 
       try {
         const payload = await event.alarm(ctx);
-        if (!payload) {
+        if (payload.length === 0) {
           console.log(`[${eventName}] 전송할 payload 없음`);
           return;
         }
 
-        const msg = event.format(payload);
-        if (!msg) {
-          console.log(`[${eventName}] format 결과 없음`);
-          return;
-        }
+        for (const p of payload) {
+          const msg = event.format(p);
+          if (!msg) {
+            console.log(`[${eventName}] format 결과 없음`);
+            continue;
+          }
 
-        await sendToDiscordChannel(client, event.options.discordChannelId, msg);
+          await sendToDiscordChannel(client, event.options.discordChannelId, msg);
+        }
 
         console.log(`[${eventName}] 알람 전송 완료`);
       } catch (err) {
