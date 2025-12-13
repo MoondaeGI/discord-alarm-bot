@@ -95,6 +95,15 @@ async function main() {
     logInfo('이벤트 등록 및 스케줄링 완료');
   });
 
+  client.on('ping', async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const message = `나나미짱 살아있어요! ${Date.now() - interaction.createdTimestamp}ms`;
+
+    await interaction.reply(`Pong! ${Date.now() - interaction.createdTimestamp}ms`);
+    logInfo(`Ping: ${Date.now() - interaction.createdTimestamp}ms`);
+  });
+
   // ───────────────────────────────────
   // 슬래시 커맨드 핸들러 (/cve-search)
   // ───────────────────────────────────

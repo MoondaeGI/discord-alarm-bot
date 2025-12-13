@@ -225,7 +225,8 @@ ${JSON.stringify(
         { name: '설명', value: payload.description?.slice(0, 1024) || '설명 없음' },
         { name: 'URL', value: payload.link },
       )
-      .setFooter({ text: 'Mandiant Research' });
+      .setFooter({ text: 'Mandiant Research' })
+      .setColor(0x1a73e8);
 
     return { embeds: [embed] };
   }
