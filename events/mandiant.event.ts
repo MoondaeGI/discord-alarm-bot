@@ -208,6 +208,10 @@ ${JSON.stringify(
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
 
     const embed = new EmbedBuilder()
+      .setAuthor({
+        name: 'Mandiant Research',
+        iconURL: 'https://www.mandiant.com/wp-content/uploads/2021/08/Mandiant-logo-RGB.svg',
+      })
       .setTitle(payload.title)
       .setImage(payload.previewImage)
       .setURL(payload.link)

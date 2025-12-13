@@ -313,6 +313,10 @@ ${now}
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
 
     const embed = new EmbedBuilder()
+      .setAuthor({
+        name: 'NVD CVE',
+        iconURL: 'https://nvd.nist.gov/images/nvd_logo.png',
+      })
       .setTitle(`${payload.title} ${payload.cveId}`)
       .setURL(payload.link)
       .setColor(severityToColor(payload.severity))
