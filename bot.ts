@@ -2,7 +2,7 @@
 import 'dotenv/config';
 import { Client, GatewayIntentBits as Intents } from 'discord.js';
 
-import { CveEvent, HackerNewsEvent } from './events';
+import { CveEvent, HackerNewsEvent, MandiantEvent } from './events';
 import type { Event } from './events/event';
 import { logError, logInfo } from './util/log';
 import { registerEvents } from './handler';
@@ -33,10 +33,12 @@ async function main() {
 
     const cveEvent = new CveEvent();
     const hackerNewsEvent = new HackerNewsEvent();
+    const mandiantEvent = new MandiantEvent();
 
     const events: Event<any>[] = [
       cveEvent, // 필요하면 여기 다른 Event도 추가
       hackerNewsEvent,
+      mandiantEvent,
     ];
 
     logInfo('이벤트 등록 및 스케줄링 시작');
