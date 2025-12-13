@@ -11,7 +11,6 @@ export async function sendToDiscordChannel(
     throw new Error(`채널을 찾을 수 없거나 텍스트 채널이 아님: ${channelId}`);
   }
 
-  // payload가 EmbedBuilder면 메시지 형태로 변환해서 보내고,
   // payload가 이미 { embeds: [...] } 형태면 그대로 보내기
   if (payload instanceof EmbedBuilder) {
     await channel.send({ embeds: [payload.toJSON()] });

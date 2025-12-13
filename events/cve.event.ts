@@ -2,7 +2,7 @@ import { EmbedBuilder } from '@discordjs/builders';
 import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { timezoneToKst, timezoneToUtc } from '../util/time';
+import { timezoneToKst, timezoneToUtc, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 import { logFetchList } from '../util/log';
@@ -306,6 +306,8 @@ ${now}
    * 디스코드 알람 포맷
    */
   format(payload: CvePayload): DiscordOutbound | null {
+    const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
+
     const embed = new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
       .setURL(payload.link)
@@ -317,17 +319,8 @@ ${now}
           value: payload.summary,
         },
         {
-          name: '핵심 정보',
-          value: [
-            `• 제목(KR): ${payload.title || '정보 없음'}`,
-            `• 발행일(미국/현지): ${new Date(payload.publishedAt).toLocaleString('en-US', {
-              timeZone: 'America/New_York',
-            })}`,
-            `• 발행일(한국/KST): ${timezoneToKst(
-              payload.publishedAt,
-              this.options.timezone,
-            ).toISOString()} (${this.options.timezone} ${this.options.timezone})`,
-          ].join('\n'),
+          name: '발행일',
+          value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
         },
         {
           name: 'CVSS',
@@ -339,7 +332,7 @@ ${now}
           value: payload.link,
         },
       )
-      .setFooter({ text: 'NVD CVE 알림봇' });
+      .setFooter({ text: 'NVD CVE' });
 
     return { embeds: [embed] };
   }

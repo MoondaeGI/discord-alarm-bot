@@ -1,7 +1,7 @@
 import { EmbedBuilder } from '@discordjs/builders';
 import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
-import { timezoneToUtc, timezoneToKst } from '../util/time';
+import { timezoneToUtc, timezoneToKst, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize } from '../util/llm';
 import { logFetchList } from '../util/log';
@@ -102,8 +102,8 @@ class MandiantEvent implements Event<MandiantPayload> {
       if (!publishedAtUtc) continue;
 
       const t = publishedAtUtc.getTime();
-      if (t >= ctx.windowEndUtc.getTime()) continue;
-      if (t < ctx.windowStartUtc.getTime()) break; // ✅ 최신순이라 여기서 끝
+      //if (t >= ctx.windowEndUtc.getTime()) continue;
+      //if (t < ctx.windowStartUtc.getTime()) break; // ✅ 최신순이라 여기서 끝
 
       inWindow.push(it);
 
@@ -203,33 +203,22 @@ ${JSON.stringify(
    * 디스코드 알람 포맷
    */
   format(payload: MandiantPayload): DiscordOutbound | null {
-    console.log(payload);
+    const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
+
     const embed = new EmbedBuilder()
       .setTitle(payload.title)
       .setURL(payload.link)
       .setTimestamp(new Date())
       .addFields(
-        { name: '요약', value: payload.summary || '요약 없음' },
         {
-          name: '핵심 정보',
-          value: [
-            `• 발행일(미국/현지): ${new Date(payload.publishedAt).toLocaleString('en-US', {
-              timeZone: 'America/New_York',
-            })}`,
-            `• 발행일(한국/KST): ${timezoneToKst(
-              payload.publishedAt,
-              this.options.timezone,
-            ).toLocaleString('ko-KR', {
-              timeZone: 'Asia/Seoul',
-            })}`,
-          ].join('\n'),
+          name: '발행일',
+          value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
         },
+        { name: '요약', value: payload.summary || '요약 없음' },
         { name: '설명', value: payload.description?.slice(0, 1024) || '설명 없음' },
         { name: 'URL', value: payload.link },
       )
-      .setFooter({ text: 'Mandiant Research 알림봇' });
-
-    console.log(embed);
+      .setFooter({ text: 'Mandiant Research' });
 
     return { embeds: [embed] };
   }

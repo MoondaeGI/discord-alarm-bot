@@ -49,3 +49,11 @@ export function timezoneToKst(date: Date, timezone: Timezone): Date {
 export function kstToTimezone(date: Date, timezone: Timezone): Date {
   return DateTime.fromJSDate(date, { zone: 'Asia/Seoul' }).setZone(timezone).toJSDate();
 }
+
+/**
+ * KST 기준으로 날짜를 "yyyy년 MM월 dd일 HH:mm:ss" 포맷 문자열로 반환
+ */
+export function formatKst(date: Date | string | number): string {
+  const d = date instanceof Date ? date : new Date(date);
+  return DateTime.fromJSDate(d).toFormat('yyyy년 MM월 dd일 HH:mm:ss');
+}

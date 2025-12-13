@@ -3,7 +3,7 @@ import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../typ
 import { Event } from './event';
 import { summarize as llmSummarize } from '../util/llm';
 import { logFetchList } from '../util/log';
-import { timezoneToKst } from '../util/time';
+import { timezoneToKst, formatKst } from '../util/time';
 
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 5, // 5분마다
@@ -163,9 +163,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     const rawTitle = (payload.title ?? '').trim();
     const title =
       rawTitle.length > 256 ? `${rawTitle.slice(0, 253)}...` : rawTitle || 'Untitled (Hacker News)';
-
-    console.log('title', title);
-    console.log('payload', payload);
+    const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
 
     const embed = new EmbedBuilder()
       .setAuthor({
@@ -177,6 +175,10 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
       .setDescription(payload.summary)
       .addFields(
         {
+          name: '작성자',
+          value: payload.author,
+        },
+        {
           name: 'Points',
           value: String(payload.points),
           inline: true,
@@ -187,15 +189,11 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
           inline: true,
         },
         {
-          name: '작성 시간 (KST)',
-          value: `${timezoneToKst(
-            payload.publishedAt,
-            this.options.timezone,
-          ).toISOString()} (${this.options.timezone} ${this.options.timezone})`,
-          inline: false,
+          name: '발행일',
+          value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
         },
       )
-      .setFooter({ text: `작성자: ${payload.author}` })
+      .setFooter({ text: 'Hacker News' })
       .setTimestamp(payload.publishedAt)
       .setColor(0xff6600); // HN 브랜드 색상
 
