@@ -1,5 +1,5 @@
 import type { DiscordOutbound } from '../types/discord';
-import type { EventOptions, EventPayload } from '../types/event';
+import type { EventOptions, EventPayload, AlarmWindow } from '../types/event';
 
 /**
  * 모든 이벤트 소스가 따라야 할 인터페이스
@@ -10,7 +10,7 @@ export interface Event<T extends EventPayload> {
   readonly options: EventOptions;
 
   // 최신 이벤트 JSON 반환
-  alarm(lastRunAt?: Date): Promise<T | null>;
+  alarm(ctx: AlarmWindow): Promise<T[]>;
 
   // 검색 기능능
   search?(params: any): Promise<T[]>;

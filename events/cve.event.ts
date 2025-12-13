@@ -1,8 +1,8 @@
 import { EmbedBuilder } from '@discordjs/builders';
-import { DiscordOutbound, EventOptions, EventPayload, Timezone } from '../types';
+import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { toKst } from '../util/time';
+import { timezoneToUtc, toKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 
@@ -10,7 +10,7 @@ const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
   url: 'https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
-  timezone: 'Asia/Seoul' as Timezone,
+  timezone: 'UTC',
 };
 
 interface CvePayload extends EventPayload {
@@ -64,37 +64,47 @@ class CveEvent implements Event<CvePayload> {
   /**
    * 알람용: RSS에서 최신 1개 가져와서 CvePayload로 변환
    */
-  async alarm(lastRunAt?: Date): Promise<CvePayload | null> {
+  async alarm(ctx: AlarmWindow): Promise<CvePayload[]> {
     const url = new URL(this.options.url);
 
-    // lastRunAt 이후만 보려면 여기서 파라미터 추가 가능
-    if (lastRunAt) {
-      url.searchParams.set('pubStartDate', lastRunAt.toISOString());
-    }
-
     const res = await fetch(url.toString());
-    if (!res.ok) {
-      throw new Error(`CVE API error: ${res.status} ${res.statusText}`);
-    }
+    if (!res.ok) throw new Error(`CVE API error: ${res.status} ${res.statusText}`);
 
     const xml = await res.text();
     const parser = new XMLParser();
     const parsed = parser.parse(xml);
 
     const items = parsed?.rss?.channel?.item || [];
-    if (!items.length) return null;
+    if (!items.length) return [];
 
-    const item = items[0]; // 가장 최신 1개
+    // 1) RSS -> CveItem 배열로 정규화
+    const normalized: CveItem[] = items.map((it: any) => ({
+      id: it.link,
+      title: it.title,
+      link: it.link,
+      pubDate: it.pubDate,
+      description: it.description,
+    }));
 
-    const json: CveItem = {
-      id: item.link, // RSS link를 유일 ID로 사용
-      title: item.title,
-      link: item.link,
-      pubDate: item.pubDate,
-      description: item.description,
-    };
+    // 2) window 필터 (UTC 기준)
+    const inWindow: CveItem[] = normalized.filter((it) => {
+      // NVD RSS pubDate는 보통 RFC2822에 TZ 포함이라 new Date(it.pubDate)만으로도 UTC가 됨
+      const publishedAtUtc =
+        timezoneToUtc?.(it.pubDate, this.options.timezone) ?? new Date(it.pubDate);
 
-    return this.buildPayload(json);
+      const t = publishedAtUtc.getTime();
+      return t >= ctx.windowStartUtc.getTime() && t < ctx.windowEndUtc.getTime();
+    });
+
+    if (!inWindow.length) return [];
+
+    const payloads: CvePayload[] = [];
+    for (const item of inWindow) {
+      const payload = await this.buildPayload(item);
+      if (payload) payloads.push(payload);
+    }
+
+    return payloads;
   }
 
   /**

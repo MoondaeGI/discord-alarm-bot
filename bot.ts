@@ -6,6 +6,7 @@ import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
 import { sendToDiscordChannel } from './util/discord';
 import { logError } from './util/log';
+import { AlarmWindow } from './types';
 
 // ───────────────────────────────────
 // 이벤트 등록/실행 핸들러
@@ -15,9 +16,15 @@ async function registerEvents(client: Client, events: Event<any>[]): Promise<voi
     const eventName = event.constructor.name;
     const interval = event.options.intervalMs;
 
+    let lastWindowEndUtc: Date | null = null;
+
     const runOnce = async () => {
+      const windowEndUtc = new Date();
+      const windowStartUtc = lastWindowEndUtc ?? new Date(windowEndUtc.getTime() - interval);
+      const ctx: AlarmWindow = { windowStartUtc, windowEndUtc };
+
       try {
-        const payload = await event.alarm();
+        const payload = await event.alarm(ctx);
         if (!payload) {
           console.log(`[${eventName}] 전송할 payload 없음`);
           return;

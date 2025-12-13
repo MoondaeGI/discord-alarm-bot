@@ -12,3 +12,8 @@ export interface EventPayload {
   link: string;
   publishedAt: Date;
 }
+
+export interface AlarmWindow {
+  windowStartUtc: Date;
+  windowEndUtc: Date;
+}

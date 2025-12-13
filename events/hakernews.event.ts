@@ -1,6 +1,6 @@
 // src/events/hackernews.event.ts
 import { EmbedBuilder } from '@discordjs/builders';
-import { DiscordOutbound, EventOptions, EventPayload } from '../types';
+import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { toKst } from '../util/time';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
@@ -9,7 +9,7 @@ const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 10, // 10분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
   discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
-  timezone: 'Asia/Seoul',
+  timezone: 'UTC',
 };
 
 interface HackerNewsApiHit {
@@ -43,16 +43,14 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
   /**
    * 주기 알람
    */
-  async alarm(lastRunAt?: Date): Promise<HackerNewsPayload | null> {
+  async alarm(ctx: AlarmWindow): Promise<HackerNewsPayload[]> {
     const res = await fetch(this.options.url); // front_page
-    if (!res.ok) {
-      if (res.status >= 500) return null;
-      throw new Error(`HackerNews API error: ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`HackerNews API error: ${res.status}`);
 
     const data = await res.json();
     const hits = Array.isArray(data.hits) ? data.hits : [];
 
+    const payloads: HackerNewsPayload[] = [];
     for (const hit of hits) {
       const title = hit.title ?? hit.story_title ?? '';
       const link =
@@ -60,9 +58,21 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
 
       // ★ LLM 없이 기술/AI/보안 글만 필터링
       if (!isTechArticle(title, link)) continue;
+
+      const res = await fetch(this.options.url); // front_page
+      if (!res.ok) throw new Error(`HackerNews API error: ${res.status}`);
+
+      if (!hit.created_at_i) continue;
+      const publishedAtUtc = new Date(hit.created_at_i * 1000);
+
+      const t = publishedAtUtc.getTime();
+      if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
+
+      const payload = await this.buildPayload(hit);
+      if (payload) payloads.push(payload);
     }
 
-    return this.buildPayload(hits[0]);
+    return payloads;
   }
 
   /**
