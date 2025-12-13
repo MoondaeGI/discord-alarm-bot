@@ -6,6 +6,19 @@ import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
 import { logError, logInfo } from './util/log';
 import { registerEvents } from './handler';
+import http from 'http';
+
+const port = process.env.PORT || 3000;
+
+// render health check 응답용 서버
+http
+  .createServer((req, res) => {
+    res.writeHead(200);
+    res.end('OK');
+  })
+  .listen(port, () => {
+    console.log(`Health server listening on ${port}`);
+  });
 
 // ───────────────────────────────────
 // 메인 엔트리 포인트
