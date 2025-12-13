@@ -43,7 +43,17 @@ export function logEvent(eventName: string, message: string, data?: unknown) {
   if (data === undefined) {
     console.log(prefix);
   } else {
-    console.log(prefix, data);
+    let serialized = '';
+    if (typeof data === 'string') {
+      serialized = data;
+    } else {
+      try {
+        serialized = JSON.stringify(data);
+      } catch {
+        serialized = '[unserializable data]';
+      }
+    }
+    console.log(`${prefix} ${serialized}`);
   }
 }
 

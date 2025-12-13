@@ -12,7 +12,7 @@ export interface Event<T extends EventPayload> {
   // 최신 이벤트 JSON 반환
   alarm(ctx: AlarmWindow): Promise<T[]>;
 
-  // 검색 기능능
+  // 검색 기능
   search?(params: any): Promise<T[]>;
 
   // LLM 이벤트 요약
