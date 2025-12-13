@@ -3,6 +3,7 @@ const colors = {
   gray: '\x1b[90m',
   green: '\x1b[32m',
   red: '\x1b[31m',
+  blue: '\x1b[34m',
   cyan: '\x1b[36m',
   yellow: '\x1b[33m',
   magenta: '\x1b[35m',
@@ -31,6 +32,19 @@ export function logLlmResult(promptTag: string, summary: string) {
 
 export function logPayload(label: string, payload: unknown) {
   console.log(`${tag(`[${time()}]`)}${tag('[PAYLOAD]', 'cyan')}[${label}]`, payload);
+}
+
+export function logInfo(message: string) {
+  console.log(`${tag(`[${time()}]`)}${tag('[INFO]', 'blue')} ${message}`);
+}
+
+export function logEvent(eventName: string, message: string, data?: unknown) {
+  const prefix = `${tag(`[${time()}]`)}${tag('[EVENT]', 'yellow')}[${eventName}] ${message}`;
+  if (data === undefined) {
+    console.log(prefix);
+  } else {
+    console.log(prefix, data);
+  }
 }
 
 /**

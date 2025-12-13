@@ -5,7 +5,7 @@ import { Client, GatewayIntentBits as Intents } from 'discord.js';
 import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
 import { sendToDiscordChannel } from './util/discord';
-import { logError } from './util/log';
+import { logError, logEvent, logInfo } from './util/log';
 import { AlarmWindow } from './types';
 
 // ───────────────────────────────────
@@ -26,21 +26,21 @@ async function registerEvents(client: Client, events: Event<any>[]): Promise<voi
       try {
         const payload = await event.alarm(ctx);
         if (payload.length === 0) {
-          console.log(`[${eventName}] 전송할 payload 없음`);
+          logEvent(eventName, 'payload 없음', { windowStartUtc, windowEndUtc });
           return;
         }
 
         for (const p of payload) {
           const msg = event.format(p);
           if (!msg) {
-            console.log(`[${eventName}] format 결과 없음`);
+            logEvent(eventName, 'format 결과 없음', { id: (p as any)?.id });
             continue;
           }
 
           await sendToDiscordChannel(client, event.options.discordChannelId, msg);
         }
 
-        console.log(`[${eventName}] 알람 전송 완료`);
+        logEvent(eventName, '알람 전송 완료', { count: payload.length });
       } catch (err) {
         logError(`${eventName}:runOnce`, err);
         // 여기서 디스코드 에러 embed 보내고 싶으면 추가 가능
@@ -64,7 +64,7 @@ async function main() {
   });
 
   client.once('ready', async () => {
-    console.log(`로그인 완료: ${client.user?.tag}`);
+    logInfo(`로그인 완료: ${client.user?.tag}`);
 
     const cveEvent = new CveEvent();
     const hackerNewsEvent = new HackerNewsEvent();
@@ -74,10 +74,10 @@ async function main() {
       hackerNewsEvent,
     ];
 
-    console.log('이벤트 등록 및 스케줄링 시작');
+    logInfo('이벤트 등록 및 스케줄링 시작');
     void registerEvents(client, events);
 
-    console.log('이벤트 등록 및 스케줄링 완료');
+    logInfo('이벤트 등록 및 스케줄링 완료');
   });
 
   // ───────────────────────────────────
