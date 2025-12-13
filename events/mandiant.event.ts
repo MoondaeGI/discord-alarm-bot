@@ -5,6 +5,7 @@ import { timezoneToUtc, timezoneToKst, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize } from '../util/llm';
 import { logFetchList } from '../util/log';
+import { getPreviewImage } from '../util/thumnail';
 
 const MandiantEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 30, // 30분
@@ -190,12 +191,15 @@ ${JSON.stringify(
 
     const s = await this.summarize(item);
 
+    const previewImage = await getPreviewImage(item.link);
+
     return {
       title: s.title,
       summary: s.summary,
       link: item.link,
       publishedAt: new Date(item.pubDate),
       description: s.desc,
+      previewImage,
     };
   }
 
@@ -207,6 +211,7 @@ ${JSON.stringify(
 
     const embed = new EmbedBuilder()
       .setTitle(payload.title)
+      .setImage(payload.previewImage ?? '')
       .setURL(payload.link)
       .setTimestamp(new Date())
       .addFields(

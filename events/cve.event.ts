@@ -6,6 +6,7 @@ import { timezoneToKst, timezoneToUtc, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 import { logFetchList } from '../util/log';
+import { getPreviewImage } from '../util/thumnail';
 
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 10,
@@ -202,6 +203,8 @@ class CveEvent implements Event<CvePayload> {
     // 한국어 요약/번역
     const summary = await this.summarize(item);
 
+    const previewImage = await getPreviewImage(item.link);
+
     return {
       title: summary.title,
       cveId,
@@ -212,6 +215,7 @@ class CveEvent implements Event<CvePayload> {
       link: item.link,
       publishedAt: new Date(item.pubDate),
       description: summary.desc,
+      previewImage,
     };
   }
 
@@ -310,6 +314,7 @@ ${now}
 
     const embed = new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
+      .setImage(payload.previewImage ?? '')
       .setURL(payload.link)
       .setColor(severityToColor(payload.severity))
       .setTimestamp(new Date())

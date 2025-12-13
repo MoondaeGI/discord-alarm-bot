@@ -4,6 +4,7 @@ import { Event } from './event';
 import { summarize as llmSummarize } from '../util/llm';
 import { logFetchList } from '../util/log';
 import { timezoneToKst, formatKst } from '../util/time';
+import { getPreviewImage } from '../util/thumnail';
 
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 5, // 5분마다
@@ -131,12 +132,14 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     const createdAtIso = hit.created_at ?? new Date().toISOString();
     const publishedAt = new Date(createdAtIso);
 
+    const previewImage = await getPreviewImage(link);
+
     // 공통 EventPayload + 확장 필드 모두 포함
     const payload: HackerNewsPayload = {
       summary: '', // 일단 비워두고 LLM 결과로 채움
       link,
       publishedAt,
-
+      previewImage,
       id,
       title,
       author,
@@ -170,6 +173,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
         name: 'Hacker News',
         iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
       })
+      .setImage(payload.previewImage ?? '')
       .setTitle(title)
       .setURL(payload.link)
       .setDescription(payload.summary)
@@ -179,12 +183,12 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
           value: payload.author,
         },
         {
-          name: 'Points',
+          name: '포인트',
           value: String(payload.points),
           inline: true,
         },
         {
-          name: 'Comments',
+          name: '댓글수',
           value: String(payload.commentCount),
           inline: true,
         },
