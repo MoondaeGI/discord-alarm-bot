@@ -61,6 +61,8 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
       if (!hit.created_at_i) continue;
       const publishedAtUtc = new Date(hit.created_at_i * 1000);
 
+      console.log('publishedAtUtc', publishedAtUtc);
+
       const t = publishedAtUtc.getTime();
       if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
 

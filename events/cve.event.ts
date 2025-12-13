@@ -75,28 +75,42 @@ class CveEvent implements Event<CvePayload> {
     const parser = new XMLParser();
     const parsed = parser.parse(xml);
 
-    const items = parsed?.rss?.channel?.item || [];
+    const rdf = parsed['rdf:RDF'];
+    const itemsRaw = rdf?.item ?? [];
+
+    const items = Array.isArray(itemsRaw) ? itemsRaw : [itemsRaw];
     logFetchList(url.toString(), res.status, items.length);
+
     if (!items.length) return [];
 
     // 1) RSS -> CveItem 배열로 정규화
-    const normalized: CveItem[] = items.map((it: any) => ({
-      id: it.link,
-      title: it.title,
-      link: it.link,
-      pubDate: it.pubDate,
-      description: it.description,
-    }));
+    const normalized: CveItem[] = items
+      .map((it: any) => {
+        const pubDate = it.pubDate ?? it['dc:date'] ?? it.date ?? null; // ✅ 핵심
 
-    // 2) window 필터 (UTC 기준)
-    const inWindow: CveItem[] = normalized.filter((it) => {
-      // NVD RSS pubDate는 보통 RFC2822에 TZ 포함이라 new Date(it.pubDate)만으로도 UTC가 됨
-      const publishedAtUtc =
-        timezoneToUtc?.(it.pubDate, this.options.timezone) ?? new Date(it.pubDate);
+        return {
+          id: it.link ?? it.guid ?? it.title ?? '',
+          title: it.title ?? '',
+          link: it.link ?? '',
+          pubDate, // string | null
+          description: it.description ?? it['content:encoded'] ?? it.encoded ?? '',
+        };
+      })
+      .filter((it) => !!it.pubDate && !!it.link);
+
+    const inWindow: CveItem[] = [];
+
+    for (const it of normalized) {
+      const publishedAtUtc = timezoneToUtc(it.pubDate, this.options.timezone);
+      if (!publishedAtUtc) continue;
 
       const t = publishedAtUtc.getTime();
-      return t >= ctx.windowStartUtc.getTime() && t < ctx.windowEndUtc.getTime();
-    });
+
+      if (t >= ctx.windowEndUtc.getTime()) continue;
+      if (t < ctx.windowStartUtc.getTime()) break;
+
+      inWindow.push(it);
+    }
 
     if (!inWindow.length) return [];
 
