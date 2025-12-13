@@ -40,9 +40,6 @@ export interface HackerNewsPayload extends EventPayload {
 export class HackerNewsEvent implements Event<HackerNewsPayload> {
   public readonly options = HackerNewsEventOptions;
 
-  /**
-   * 주기 알람
-   */
   async alarm(ctx: AlarmWindow): Promise<HackerNewsPayload[]> {
     const res = await fetch(this.options.url); // front_page
     if (!res.ok) throw new Error(`HackerNews API error: ${res.status}`);
@@ -75,9 +72,6 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     return payloads;
   }
 
-  /**
-   * 검색용 (slash command 등)
-   */
   async search(params: { query: string }): Promise<HackerNewsPayload[]> {
     const url = `https://hn.algolia.com/api/v1/search_by_date?tags=story&query=${encodeURIComponent(
       params.query,
