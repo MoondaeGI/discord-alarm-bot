@@ -1,3 +1,5 @@
+import { timezoneToKst } from './time';
+
 const colors = {
   reset: '\x1b[0m',
   gray: '\x1b[90m',
@@ -9,7 +11,7 @@ const colors = {
   magenta: '\x1b[35m',
 };
 
-const time = () => new Date().toISOString();
+const time = () => timezoneToKst(new Date(), 'UTC').toISOString();
 const tag = (text: string, color: keyof typeof colors = 'gray') =>
   `${colors[color]}${text}${colors.reset}`;
 

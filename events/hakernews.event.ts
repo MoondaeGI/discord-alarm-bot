@@ -1,10 +1,9 @@
-// src/events/hackernews.event.ts
 import { EmbedBuilder } from '@discordjs/builders';
 import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
-import { toKst } from '../util/time';
-import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
+import { summarize as llmSummarize } from '../util/llm';
 import { logFetchList } from '../util/log';
+import { timezoneToKst } from '../util/time';
 
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 5, // 5분마다
@@ -189,11 +188,10 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
         },
         {
           name: '작성 시간 (KST)',
-          value: `${toKst(payload.publishedAt).toISOString()} (${toKst(
+          value: `${timezoneToKst(
             payload.publishedAt,
-          ).toLocaleString('ko-KR', {
-            timeZone: 'Asia/Seoul',
-          })})`,
+            this.options.timezone,
+          ).toISOString()} (${this.options.timezone} ${this.options.timezone})`,
           inline: false,
         },
       )

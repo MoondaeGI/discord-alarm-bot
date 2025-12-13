@@ -2,7 +2,7 @@ import { EmbedBuilder } from '@discordjs/builders';
 import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { timezoneToUtc, toKst } from '../util/time';
+import { timezoneToKst, timezoneToUtc } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
 import { logFetchList } from '../util/log';
@@ -323,9 +323,10 @@ ${now}
             `• 발행일(미국/현지): ${new Date(payload.publishedAt).toLocaleString('en-US', {
               timeZone: 'America/New_York',
             })}`,
-            `• 발행일(한국/KST): ${toKst(payload.publishedAt).toLocaleString('ko-KR', {
-              timeZone: 'Asia/Seoul',
-            })}`,
+            `• 발행일(한국/KST): ${timezoneToKst(
+              payload.publishedAt,
+              this.options.timezone,
+            ).toISOString()} (${this.options.timezone} ${this.options.timezone})`,
           ].join('\n'),
         },
         {
