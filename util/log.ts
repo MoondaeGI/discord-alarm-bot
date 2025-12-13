@@ -12,8 +12,8 @@ const colors = {
 };
 
 const time = () => timezoneToKst(new Date(), 'UTC').toISOString();
-const tag = (text: string, color: keyof typeof colors = 'gray') =>
-  `${colors[color]}${text}${colors.reset}`;
+const tag = (text: string, color?: keyof typeof colors) =>
+  color ? `${colors[color]}${text}${colors.reset}` : text;
 
 export function logFetchSuccess(url: string, status: number, note?: string) {
   console.log(
