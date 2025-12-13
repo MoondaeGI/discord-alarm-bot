@@ -107,12 +107,10 @@ class CveEvent implements Event<CvePayload> {
 
       const t = publishedAtUtc.getTime();
 
-      //if (t >= ctx.windowEndUtc.getTime()) continue;
-      //if (t < ctx.windowStartUtc.getTime()) break;
+      if (t >= ctx.windowEndUtc.getTime()) continue;
+      if (t < ctx.windowStartUtc.getTime()) break;
 
       inWindow.push(it);
-
-      if (inWindow.length >= 1) break;
     }
 
     if (!inWindow.length) return [];
@@ -316,7 +314,6 @@ ${now}
 
     const embed = new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
-      .setImage(payload.previewImage)
       .setURL(payload.link)
       .setColor(severityToColor(payload.severity))
       .setTimestamp(new Date())
