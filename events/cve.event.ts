@@ -5,6 +5,7 @@ import { severityToColor } from '../util/color';
 import { timezoneToUtc, toKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
+import { logFetchList } from '../util/log';
 
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 60 * 24,
@@ -75,6 +76,7 @@ class CveEvent implements Event<CvePayload> {
     const parsed = parser.parse(xml);
 
     const items = parsed?.rss?.channel?.item || [];
+    logFetchList(url.toString(), res.status, items.length);
     if (!items.length) return [];
 
     // 1) RSS -> CveItem 배열로 정규화
@@ -290,7 +292,7 @@ ${now}
    * 디스코드 알람 포맷
    */
   format(payload: CvePayload): DiscordOutbound | null {
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setTitle(`${payload.title} ${payload.cveId}`)
       .setURL(payload.link)
       .setColor(severityToColor(payload.severity))
@@ -323,6 +325,8 @@ ${now}
         },
       )
       .setFooter({ text: 'NVD CVE 알림봇' });
+
+    return { embeds: [embed] };
   }
 }
 

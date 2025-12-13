@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@types/luxon": "^3.7.1",
-    "discord.js": "^13.17.1",
+    "discord.js": "^14.25.1",
     "dotenv": "^16.4.5",
     "fast-xml-parser": "^5.3.2",
     "luxon": "^3.7.2",

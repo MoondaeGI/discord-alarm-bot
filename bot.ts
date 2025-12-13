@@ -1,6 +1,6 @@
 // src/bot.ts
 import 'dotenv/config';
-import { Client, Intents } from 'discord.js';
+import { Client, GatewayIntentBits as Intents } from 'discord.js';
 
 import { CveEvent, HackerNewsEvent } from './events';
 import type { Event } from './events/event';
@@ -58,15 +58,12 @@ async function registerEvents(client: Client, events: Event<any>[]): Promise<voi
 // ───────────────────────────────────
 async function main() {
   const client = new Client({
-    intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
+    intents: [Intents.Guilds, Intents.GuildMessages],
   });
 
   client.once('ready', async () => {
     console.log(`로그인 완료: ${client.user?.tag}`);
 
-    // CveEvent 인스턴스 하나 생성해서
-    // 1) 알람용 이벤트 배열에 넣고
-    // 2) 검색(/cve-search)에서도 재사용
     const cveEvent = new CveEvent();
     const hackerNewsEvent = new HackerNewsEvent();
 
@@ -85,9 +82,8 @@ async function main() {
   // 슬래시 커맨드 핸들러 (/cve-search)
   // ───────────────────────────────────
   client.on('interactionCreate', async (interaction) => {
-    // v13 기준: isCommand()
-    // v14라면 isChatInputCommand()로 바꿔야 함
-    if (!interaction.isCommand()) return;
+    if (!interaction.isChatInputCommand()) return;
+
     if (interaction.commandName !== 'cve-search') return;
 
     const question = interaction.options.getString('question', true);

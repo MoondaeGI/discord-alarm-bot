@@ -4,6 +4,7 @@ import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../typ
 import { Event } from './event';
 import { toKst } from '../util/time';
 import { summarize as llmSummarize, search as llmSearch, extractJsonObject } from '../util/llm';
+import { logFetchList } from '../util/log';
 
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 10, // 10분마다
@@ -46,6 +47,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
 
     const data = await res.json();
     const hits = Array.isArray(data.hits) ? data.hits : [];
+    logFetchList(this.options.url, res.status, hits.length);
 
     const payloads: HackerNewsPayload[] = [];
     for (const hit of hits) {
@@ -55,9 +57,6 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
 
       // ★ LLM 없이 기술/AI/보안 글만 필터링
       if (!isTechArticle(title, link)) continue;
-
-      const res = await fetch(this.options.url); // front_page
-      if (!res.ok) throw new Error(`HackerNews API error: ${res.status}`);
 
       if (!hit.created_at_i) continue;
       const publishedAtUtc = new Date(hit.created_at_i * 1000);
@@ -84,6 +83,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
 
     const data = await res.json();
     const hits: HackerNewsApiHit[] = Array.isArray(data.hits) ? data.hits : [];
+    logFetchList(url, res.status, hits.length);
 
     const payloads: HackerNewsPayload[] = [];
     for (const hit of hits) {
@@ -161,7 +161,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
    * Discord용 포맷 (CVE 형식 참고해서 Embed)
    */
   format(payload: HackerNewsPayload): DiscordOutbound | null {
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
       .setAuthor({
         name: 'Hacker News',
         iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
@@ -193,6 +193,11 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
       .setFooter({ text: `작성자: ${payload.author}` })
       .setTimestamp(payload.publishedAt)
       .setColor(0xff6600); // HN 브랜드 색상
+
+    return {
+      content: payload.link,
+      embeds: [embed],
+    };
   }
 }
 

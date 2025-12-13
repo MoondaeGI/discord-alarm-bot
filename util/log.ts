@@ -16,3 +16,12 @@ export function logLlmResult(promptTag: string, summary: string) {
 export function logPayload(label: string, payload: unknown) {
   console.log(`[${time()}][PAYLOAD][${label}]`, payload);
 }
+
+/**
+ * HTTP 요청 결과와 JSON 배열 길이를 함께 로깅
+ */
+export function logFetchList(url: string, status: number, listLength: number) {
+  console.log(
+    `[${time()}][FETCH][LIST] ${status} ${url} | items=${listLength}`,
+  );
+}
