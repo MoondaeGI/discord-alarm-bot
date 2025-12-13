@@ -11,7 +11,7 @@ export interface EventPayload {
   summary: string;
   link: string;
   publishedAt: Date;
-  previewImage: string | null;
+  previewImage: string;
 }
 
 export interface AlarmWindow {

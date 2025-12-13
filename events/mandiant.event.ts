@@ -108,7 +108,7 @@ class MandiantEvent implements Event<MandiantPayload> {
 
       inWindow.push(it);
 
-      if (inWindow.length >= 3) break;
+      if (inWindow.length >= 1) break;
     }
 
     if (!inWindow.length) return [];
@@ -211,7 +211,7 @@ ${JSON.stringify(
 
     const embed = new EmbedBuilder()
       .setTitle(payload.title)
-      .setImage(payload.previewImage ?? '')
+      .setImage(payload.previewImage)
       .setURL(payload.link)
       .setTimestamp(new Date())
       .addFields(

@@ -1,16 +1,20 @@
 import * as cheerio from 'cheerio';
+import { join } from 'path';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
-export async function getPreviewImage(url: string): Promise<string | null> {
+// 상대경로 -> 절대경로 (로컬 기본 이미지)
+const NO_IMAGE_PATH = 'https://discord-alarm-bot-9zb1.onrender.com/public/images/no_image.png';
+
+export async function getPreviewImage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: { 'User-Agent': UA },
     redirect: 'follow',
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) return NO_IMAGE_PATH;
 
   const html = await res.text();
   const $ = cheerio.load(html);
@@ -31,5 +35,6 @@ export async function getPreviewImage(url: string): Promise<string | null> {
     }
   }
 
-  return null;
+  // 원본에서 이미지를 찾지 못하면 로컬 기본 이미지 반환
+  return NO_IMAGE_PATH;
 }

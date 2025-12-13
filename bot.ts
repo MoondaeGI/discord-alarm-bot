@@ -7,18 +7,66 @@ import type { Event } from './events/event';
 import { logError, logInfo } from './util/log';
 import { registerEvents } from './handler';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
 
 const port = process.env.PORT || 3000;
+const publicDir = path.resolve(process.cwd(), 'public');
 
 // render health check 응답용 서버
 http
   .createServer((req, res) => {
-    res.writeHead(200);
-    res.end('OK');
+    if (!req.url) {
+      res.writeHead(400);
+      return res.end();
+    }
+
+    const url = new URL(req.url, `http://${req.headers.host}`);
+
+    // 1) health check
+    if (url.pathname === '/health') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      return res.end('OK');
+    }
+
+    // 2) public static files
+    if (url.pathname.startsWith('/public/')) {
+      const filePath = path.join(publicDir, url.pathname.replace('/public/', ''));
+
+      // 디렉토리 탈출 방지
+      if (!filePath.startsWith(publicDir)) {
+        res.writeHead(403);
+        return res.end('Forbidden');
+      }
+
+      if (!fs.existsSync(filePath)) {
+        res.writeHead(404);
+        return res.end('Not Found');
+      }
+
+      const stream = fs.createReadStream(filePath);
+      res.writeHead(200, {
+        'Content-Type': getMimeType(filePath),
+        'Cache-Control': 'public, max-age=86400', // 1일 캐시
+      });
+      stream.pipe(res);
+      return;
+    }
+
+    // 3) default
+    res.writeHead(404);
+    res.end('Not Found');
   })
   .listen(port, () => {
-    console.log(`Health server listening on ${port}`);
+    console.log(`Health/static server listening on ${port}`);
   });
+
+function getMimeType(filePath: string) {
+  if (filePath.endsWith('.png')) return 'image/png';
+  if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) return 'image/jpeg';
+  if (filePath.endsWith('.svg')) return 'image/svg+xml';
+  return 'application/octet-stream';
+}
 
 // ───────────────────────────────────
 // 메인 엔트리 포인트

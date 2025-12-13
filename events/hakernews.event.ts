@@ -56,16 +56,20 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
         hit.url ?? hit.story_url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
       // ★ LLM 없이 기술/AI/보안 글만 필터링
-      if (!isTechArticle(title, link)) continue;
+      //if (!isTechArticle(title, link)) continue;
 
       if (!hit.created_at_i) continue;
       const publishedAtUtc = new Date(hit.created_at_i * 1000);
 
       const t = publishedAtUtc.getTime();
-      if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
+      //if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
 
       const payload = await this.buildPayload(hit);
       if (payload) payloads.push(payload);
+
+      console.log(isTechArticle(title, link));
+
+      if (payloads.length >= 1) break;
     }
 
     return payloads;
@@ -173,7 +177,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
         name: 'Hacker News',
         iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
       })
-      .setImage(payload.previewImage ?? '')
+      .setImage(payload.previewImage)
       .setTitle(title)
       .setURL(payload.link)
       .setDescription(payload.summary)
