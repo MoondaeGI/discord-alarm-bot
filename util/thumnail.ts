@@ -1,12 +1,13 @@
 import * as cheerio from 'cheerio';
-import { join } from 'path';
+
+const BASE_URL = process.env.BASE_URL ?? '';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
   '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // 상대경로 -> 절대경로 (로컬 기본 이미지)
-const NO_IMAGE_PATH = 'https://discord-alarm-bot-9zb1.onrender.com/public/images/no_image.png';
+const NO_IMAGE_PATH = `${BASE_URL}/public/images/no_image.png`;
 
 export async function getPreviewImage(url: string): Promise<string> {
   const res = await fetch(url, {
