@@ -1,8 +1,8 @@
 import { REST, Routes } from 'discord.js';
-import { pingCommand } from './commands';
+import { nanamiCommand, pingCommand } from './commands';
 import 'dotenv/config';
 
-const commands = [pingCommand];
+const commands = [pingCommand, nanamiCommand];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
 

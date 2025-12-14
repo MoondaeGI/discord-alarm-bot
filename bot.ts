@@ -9,9 +9,8 @@ import { registerEvents } from './handler';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
-import { pingCommand } from './commands';
+import { nanamiCommand, pingCommand } from './commands';
 import { initCwe } from './config/cwe.config';
-import { getCweKoById } from './util/cwe';
 
 const port = process.env.PORT || 3000;
 const publicDir = path.resolve(process.cwd(), 'public');
@@ -114,6 +113,9 @@ async function main() {
       return;
     } else if (interaction.commandName === 'ping') {
       await pingCommand.execute(interaction);
+      return;
+    } else if (interaction.commandName === 'nanami') {
+      await nanamiCommand.execute(interaction);
       return;
     }
   });

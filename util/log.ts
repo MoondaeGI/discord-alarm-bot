@@ -59,6 +59,25 @@ export function logEvent(eventName: string, message: string, data?: unknown) {
   }
 }
 
+export function logCommand(commandName: string, message: string, data?: unknown) {
+  const prefix = `${tag(`[${time()}]`)}${tag('[COMMAND]', 'magenta')}[${commandName}] ${message}`;
+  if (data === undefined) {
+    console.log(prefix);
+  } else {
+    let serialized = '';
+    if (typeof data === 'string') {
+      serialized = data;
+    } else {
+      try {
+        serialized = JSON.stringify(data);
+      } catch {
+        serialized = '[unserializable data]';
+      }
+    }
+    console.log(`${prefix} ${serialized}`);
+  }
+}
+
 /**
  * HTTP 요청 결과와 JSON 배열 길이를 함께 로깅
  */

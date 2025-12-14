@@ -1,5 +1,5 @@
 import { ChatInputCommandInteraction } from 'discord.js';
-import { logInfo } from '../util/log';
+import { logCommand } from '../util/log';
 
 export const pingCommand = {
   name: 'ping',
@@ -7,6 +7,6 @@ export const pingCommand = {
   execute: async (interaction: ChatInputCommandInteraction) => {
     const duration = Date.now() - interaction.createdTimestamp;
     await interaction.reply(`나나미짱 살아있어요! 응답속도: ${duration}ms`);
-    logInfo(`[PING] ${duration}ms`);
+    logCommand('ping', `${duration}ms`);
   },
 };
