@@ -141,8 +141,6 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
 
   // 디스코드 알람 포맷
   format(payload: CvePayload): DiscordOutbound | null {
-    console.log(JSON.stringify(payload, null, 2));
-
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
     const source = normalizeDomain(payload.cve.sourceIdentifier);
 

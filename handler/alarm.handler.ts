@@ -33,7 +33,6 @@ export async function registerEvents(client: Client, events: Event<any>[]): Prom
             logEvent(eventName, 'format 결과 없음', { id: (p as any)?.id });
             continue;
           }
-          console.log(msg);
 
           await sendToDiscordChannel(client, event.options.discordChannelId, msg);
         }
