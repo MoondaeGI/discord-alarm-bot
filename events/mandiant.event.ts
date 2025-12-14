@@ -103,10 +103,12 @@ class MandiantEvent implements Event<MandiantPayload> {
       if (!publishedAtUtc) continue;
 
       const t = publishedAtUtc.getTime();
-      if (t >= ctx.windowEndUtc.getTime()) continue;
-      if (t < ctx.windowStartUtc.getTime()) break; // ✅ 최신순이라 여기서 끝
+      //if (t >= ctx.windowEndUtc.getTime()) continue;
+      //if (t < ctx.windowStartUtc.getTime()) break; // ✅ 최신순이라 여기서 끝
 
       inWindow.push(it);
+
+      if (inWindow.length >= 1) break;
     }
 
     if (!inWindow.length) return [];
