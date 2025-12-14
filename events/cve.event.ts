@@ -205,9 +205,7 @@ export { CveEvent, CveEventOptions, CvePayload, CveSearchSpec };
 
 // API 호출 후 JSON 파싱
 async function parseJson(url: string): Promise<NvdCvesApiResponse> {
-  const res = await fetch(
-    'https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=2025-12-10T15%3A25%3A24.983Z&pubEndDate=2025-12-13T15%3A35%3A24.983Z&startIndex=0&resultsPerPage=1',
-  );
+  const res = await fetch(url);
   if (!res.ok) throw new Error(`NVD API error: ${res.status} ${res.statusText}`);
 
   const data = (await res.json()) as NvdCvesApiResponse;
