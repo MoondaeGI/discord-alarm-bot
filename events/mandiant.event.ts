@@ -4,7 +4,7 @@ import { Event } from './event';
 import { timezoneToUtc, timezoneToKst, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize } from '../util/llm';
-import { logFetchList } from '../util/log';
+import { logError, logFetchList } from '../util/log';
 import { getPreviewImage } from '../util/thumnail';
 
 const MandiantEventOptions: EventOptions = {
@@ -172,6 +172,7 @@ ${JSON.stringify(
         summary: String(obj.summary ?? payload.title),
       };
     } catch (e) {
+      logError(`mandiant.summarize:${payload.link}`, e);
       return {
         title: payload.title || '제목 없음',
         desc: cleanDesc || '',

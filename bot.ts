@@ -103,29 +103,7 @@ async function main() {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === 'cve-search') {
-      const question = interaction.options.getString('question', true);
-
       await interaction.deferReply();
-
-      try {
-        const cveEventForSearch = new CveEvent();
-        const results = await cveEventForSearch.search(question);
-
-        if (!results.length) {
-          await interaction.editReply('검색 결과가 없습니다.');
-          return;
-        }
-
-        // 너무 많을 수 있으니 상위 5개까지만 보여주기
-        const top = results.slice(0, 5);
-        const embeds = top.map((p) => cveEventForSearch.format(p)).filter((e): e is any => !!e);
-
-        await interaction.editReply({ embeds });
-      } catch (err) {
-        logError('CveEvent:search', err);
-        await interaction.editReply('검색 처리 중 오류가 발생했습니다.');
-      }
-
       return;
     } else if (interaction.commandName === 'ping') {
       await pingCommand.execute(interaction);

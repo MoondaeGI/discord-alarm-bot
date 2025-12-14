@@ -40,9 +40,28 @@ export function utcToTimezone(utcDate: Date, timezone: Timezone): Date {
   return DateTime.fromJSDate(utcDate, { zone: 'utc' }).setZone(timezone).toJSDate();
 }
 
-/** timezone Date → KST Date */
+/**
+ * timezone 로 해석한 시각을 KST 시각으로 변환
+ * - Date 인스턴스가 로컬 타임존으로 만들어진 경우에도,
+ *   연/월/일/시/분 필드를 timezone 기준으로 다시 해석해 KST로 변환한다.
+ */
 export function timezoneToKst(date: Date, timezone: Timezone): Date {
-  return DateTime.fromJSDate(date, { zone: timezone }).setZone('Asia/Seoul').toJSDate();
+  const base = date instanceof Date ? date : new Date(date); // 방어 로직 (호출부가 Date 보장하지 못할 때 대비)
+
+  const dt = DateTime.fromObject(
+    {
+      year: base.getFullYear(),
+      month: base.getMonth() + 1,
+      day: base.getDate(),
+      hour: base.getHours(),
+      minute: base.getMinutes(),
+      second: base.getSeconds(),
+      millisecond: base.getMilliseconds(),
+    },
+    { zone: timezone },
+  );
+
+  return dt.isValid ? dt.setZone('Asia/Seoul').toJSDate() : base;
 }
 
 /** KST Date → timezone Date */

@@ -2,7 +2,7 @@ import { EmbedBuilder } from '@discordjs/builders';
 import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
 import { Event } from './event';
 import { summarize as llmSummarize } from '../util/llm';
-import { logFetchList } from '../util/log';
+import { logError, logFetchList } from '../util/log';
 import { timezoneToKst, formatKst } from '../util/time';
 import { getPreviewImage } from '../util/thumnail';
 
@@ -152,7 +152,8 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     try {
       const summary = await this.summarize(payload);
       payload.summary = summary;
-    } catch {
+    } catch (e) {
+      logError(`hackernews.summarize:${id}`, e);
       payload.summary = title;
     }
 
