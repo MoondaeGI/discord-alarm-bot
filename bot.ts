@@ -10,6 +10,7 @@ import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import { pingCommand } from './commands';
+import { initCwe } from './config/cwe.config';
 
 const port = process.env.PORT || 3000;
 const publicDir = path.resolve(process.cwd(), 'public');
@@ -71,6 +72,14 @@ function getMimeType(filePath: string) {
 
 // main entry point
 async function main() {
+  try {
+    await initCwe(path.resolve(process.cwd(), 'data', 'cwe', 'cwec_v4.19.xml'));
+    logInfo('CWE map initialized');
+  } catch (err) {
+    logError('Failed to initialize CWE map:', err);
+    process.exit(1);
+  }
+
   const client = new Client({
     intents: [Intents.Guilds, Intents.GuildMessages],
   });
@@ -104,6 +113,7 @@ async function main() {
       return;
     } else if (interaction.commandName === 'ping') {
       await pingCommand.execute(interaction);
+      return;
     }
   });
 

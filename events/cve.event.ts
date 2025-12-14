@@ -80,6 +80,7 @@ class CveEvent implements Event<CvePayload> {
 
     return {
       type: input.type,
+      link: 'https://nvd.nist.gov/vuln/detail/' + input.cve.id,
       ...input,
       publishedAt: new Date(input.cve.published ?? ''),
       summary: summary.summary,
@@ -127,8 +128,6 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
     try {
       const content = await llmSummarize(prompt);
       if (!content) throw new Error('빈 응답');
-
-      return JSON.parse(content);
     } catch (e) {
       logError(`cve.summarize:${payload.cve.id}`, e);
       return {
