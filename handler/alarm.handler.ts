@@ -28,7 +28,7 @@ export async function registerEvents(client: Client, events: Event<any>[]): Prom
         }
 
         for (const p of payload) {
-          const msg = event.format(p);
+          const msg = await event.format(p);
           if (!msg) {
             logEvent(eventName, 'format 결과 없음', { id: (p as any)?.id });
             continue;

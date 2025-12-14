@@ -205,7 +205,7 @@ ${JSON.stringify(
   /**
    * 디스코드 알람 포맷
    */
-  format(payload: MandiantPayload): DiscordOutbound | null {
+  async format(payload: MandiantPayload): Promise<DiscordOutbound | null> {
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
 
     const embed = new EmbedBuilder()

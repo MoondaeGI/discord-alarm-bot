@@ -6,6 +6,7 @@ import { timezoneToKst, formatKst } from '../util/time';
 import { summarize as llmSummarize } from '../util/llm';
 import { logError, logFetchList } from '../util/log';
 import { NvdCveItem } from '../types';
+import { getCweKoById } from '../util/cwe';
 
 export type CveEventType = 'NEW' | 'MODIFIED';
 
@@ -139,9 +140,11 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
   }
 
   // 디스코드 알람 포맷
-  format(payload: CvePayload): DiscordOutbound | null {
+  async format(payload: CvePayload): Promise<DiscordOutbound | null> {
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
     const source = normalizeDomain(payload.cve.sourceIdentifier);
+
+    const cweKo = await getCweKoById(payload.cve.weaknesses?.[0]?.description?.[0]?.value ?? '');
 
     const embed =
       payload.type === 'NEW'
@@ -165,9 +168,9 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
               },
               {
                 name: '취약점',
-                value:
-                  payload.cve.weaknesses?.map((w) => w.description?.[0]?.value ?? '').join('\n') ??
-                  '',
+                value: `● 명칭: ${cweKo?.nameEn ?? ''}
+                  ● 설명: ${cweKo?.descriptionKo ?? ''}
+                  `,
               },
               {
                 name: 'CVSS',

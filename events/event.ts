@@ -22,5 +22,5 @@ export interface Event<T extends EventPayload> {
   buildPayload(payload: any): Promise<T | null>;
 
   // 디스코드로 출력할 모양 변환
-  format(payload: T): DiscordOutbound | null;
+  format(payload: T): Promise<DiscordOutbound | null>;
 }

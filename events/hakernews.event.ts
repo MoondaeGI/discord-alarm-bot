@@ -163,7 +163,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
   /**
    * Discord용 포맷 (CVE 형식 참고해서 Embed)
    */
-  format(payload: HackerNewsPayload): DiscordOutbound | null {
+  async format(payload: HackerNewsPayload): Promise<DiscordOutbound | null> {
     const rawTitle = (payload.title ?? '').trim();
     const title =
       rawTitle.length > 256 ? `${rawTitle.slice(0, 253)}...` : rawTitle || 'Untitled (Hacker News)';
