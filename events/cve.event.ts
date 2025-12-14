@@ -129,6 +129,8 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
     try {
       const content = await llmSummarize(prompt);
       if (!content) throw new Error('빈 응답');
+
+      return JSON.parse(content);
     } catch (e) {
       logError(`cve.summarize:${payload.cve.id}`, e);
       return {
@@ -168,8 +170,8 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
               },
               {
                 name: '취약점',
-                value: `● 명칭: ${cweKo?.nameEn ?? ''}
-                  ● 설명: ${cweKo?.descriptionKo ?? ''}
+                value: `- 명칭: ${cweKo?.nameEn ?? ''}
+                  - 설명: ${cweKo?.descriptionKo ?? ''}
                   `,
               },
               {
