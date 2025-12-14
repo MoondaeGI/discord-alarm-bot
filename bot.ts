@@ -69,14 +69,13 @@ function getMimeType(filePath: string) {
   return 'application/octet-stream';
 }
 
-// ───────────────────────────────────
-// 메인 엔트리 포인트
-// ───────────────────────────────────
+// main entry point
 async function main() {
   const client = new Client({
     intents: [Intents.Guilds, Intents.GuildMessages],
   });
 
+  // ready event handler
   client.once('ready', async () => {
     logInfo(`로그인 완료: ${client.user?.tag}`);
 
@@ -96,9 +95,7 @@ async function main() {
     logInfo('이벤트 등록 및 스케줄링 완료');
   });
 
-  // ───────────────────────────────────
-  // 슬래시 커맨드 핸들러 (/cve-search)
-  // ───────────────────────────────────
+  // slash command handler
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
