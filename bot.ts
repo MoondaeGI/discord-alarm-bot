@@ -11,6 +11,7 @@ import path from 'path';
 import fs from 'fs';
 import { pingCommand } from './commands';
 import { initCwe } from './config/cwe.config';
+import { getCweKoById } from './util/cwe';
 
 const port = process.env.PORT || 3000;
 const publicDir = path.resolve(process.cwd(), 'public');

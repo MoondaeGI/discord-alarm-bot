@@ -18,6 +18,7 @@ export type CweKo = {
 export async function getCweKoById(cweId: string): Promise<CweKo | null> {
   const map = getCweMap();
   const info: CweInfo | undefined = map.get(cweId);
+
   if (!info) return null;
 
   // LLM 입력 최소화 (토큰 절약 + 품질 안정)

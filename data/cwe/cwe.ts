@@ -32,8 +32,15 @@ export async function loadCweMapFromXml(xmlPath: string): Promise<CweMap> {
   const root = parser.parse(xml);
 
   // CWE XML 구조는 버전에 따라 약간 다를 수 있어서 안전 접근
-  const catalog = root?.CWE_Catalog ?? root?.['cwe:CWE_Catalog'] ?? root;
+  const catalog =
+    root?.CWE_Catalog ??
+    root?.Weakness_Catalog ??
+    root?.['cwe:CWE_Catalog'] ??
+    root?.['cwe:Weakness_Catalog'] ??
+    root;
+
   const weaknessesNode = catalog?.Weaknesses ?? catalog?.['cwe:Weaknesses'];
+
   const weaknessList = asArray<any>(weaknessesNode?.Weakness ?? weaknessesNode?.['cwe:Weakness']);
 
   const map: CweMap = new Map();
