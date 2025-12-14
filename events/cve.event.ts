@@ -144,6 +144,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
     console.log(JSON.stringify(payload, null, 2));
 
     const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
+    const source = normalizeDomain(payload.cve.sourceIdentifier);
 
     const embed =
       payload.type === 'NEW'
@@ -161,6 +162,10 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
             )
             .setTimestamp(new Date())
             .addFields(
+              {
+                name: '제공자',
+                value: source,
+              },
               {
                 name: '취약점',
                 value:
@@ -223,4 +228,9 @@ async function setPublishedDateUrl(url: string, ctx: AlarmWindow): Promise<strin
   newUrl.searchParams.set('resultsPerPage', String(200));
 
   return newUrl.toString();
+}
+
+function normalizeDomain(domain: string): string {
+  const parts = domain.split('.');
+  return parts.length > 2 ? parts.slice(-2).join('.') : domain;
 }
