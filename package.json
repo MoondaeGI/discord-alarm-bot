@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "commonjs",
   "scripts": {
-    "build": "tsc -p ts.config",
+    "build": "tsc",
     "start": "node dist/bot.js",
     "dev": "ts-node --project ts.config bot.ts",
     "format": "prettier --write ."

@@ -123,6 +123,13 @@ async function main() {
   });
 
   await client.login(process.env.DISCORD_TOKEN);
+
+  setInterval(
+    () => {
+      logMem('[CURRENT MEM]');
+    },
+    1000 * 60 * 10,
+  );
 }
 
 main().catch((err) => {
