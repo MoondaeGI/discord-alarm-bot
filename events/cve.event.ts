@@ -171,13 +171,11 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
               },
               {
                 name: '취약점',
-                value: `- 명칭: ${cweKo?.nameEn ?? ''}
-                  - 설명: ${cweKo?.descriptionKo ?? ''}
-                  `,
+                value: ` - ${payload.cve.weaknesses?.[0]?.description?.[0]?.value}\n - 명칭: ${cweKo?.nameEn ?? ''}\n - 설명: ${cweKo?.descriptionKo ?? ''}`,
               },
               {
                 name: 'CVSS',
-                value: `- 점수: ${payload.cve.metrics?.cvssMetricV40?.[0]?.cvssData.baseScore ?? 0}\n- 요약: ${payload.vectorSummary}`,
+                value: ` - 점수: ${payload.cve.metrics?.cvssMetricV40?.[0]?.cvssData.baseScore ?? 0}\n - 요약: ${payload.vectorSummary}`,
                 inline: true,
               },
               {
@@ -186,7 +184,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
               },
               {
                 name: '발행일',
-                value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
+                value: `${this.options.timezone}/ ${formatKst(payload.publishedAt)}`,
               },
               {
                 name: '참고 정보',

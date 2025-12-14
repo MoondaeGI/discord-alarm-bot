@@ -220,7 +220,7 @@ ${JSON.stringify(
       .addFields(
         {
           name: '발행일',
-          value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
+          value: `${this.options.timezone}/ ${formatKst(payload.publishedAt)}`,
         },
         { name: '요약', value: payload.summary || '요약 없음' },
         { name: '설명', value: payload.description?.slice(0, 1024) || '설명 없음' },

@@ -195,7 +195,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
         },
         {
           name: '발행일',
-          value: `${formatKst(publishedAtKst)} (${this.options.timezone}: ${formatKst(payload.publishedAt)})`,
+          value: `${this.options.timezone}/ ${formatKst(payload.publishedAt)})`,
         },
       )
       .setFooter({ text: 'Hacker News' })
