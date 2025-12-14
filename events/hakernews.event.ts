@@ -4,7 +4,7 @@ import { Event } from './event';
 import { summarize as llmSummarize } from '../util/llm';
 import { logError, logFetchList } from '../util/log';
 import { timezoneToKst, formatKst } from '../util/time';
-import { getPreviewImage } from '../util/thumnail';
+import { getAuthIcon, getPreviewImage } from '../util/thumnail';
 
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 5, // 5분마다
@@ -172,7 +172,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     const embed = new EmbedBuilder()
       .setAuthor({
         name: 'Hacker News',
-        iconURL: 'https://upload.wikimedia.org/wikipedia/commons/d/d1/Y_Combinator_logo.svg',
+        iconURL: (await getAuthIcon()) ?? undefined,
       })
       .setImage(payload.previewImage)
       .setTitle(title)

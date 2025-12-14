@@ -8,6 +8,7 @@ const UA =
 
 // 상대경로 -> 절대경로 (로컬 기본 이미지)
 const NO_IMAGE_PATH = `${BASE_URL}/public/images/no_image.png`;
+const AUTH_ICON_PATH = `${BASE_URL}/public/images/auth_icon.png`;
 
 export async function getPreviewImage(url: string): Promise<string> {
   const res = await fetch(url, {
@@ -38,4 +39,14 @@ export async function getPreviewImage(url: string): Promise<string> {
 
   // 원본에서 이미지를 찾지 못하면 로컬 기본 이미지 반환
   return NO_IMAGE_PATH;
+}
+
+export async function getAuthIcon(): Promise<string | null> {
+  const res = await fetch(AUTH_ICON_PATH, {
+    headers: { 'User-Agent': UA },
+    redirect: 'follow',
+  });
+  if (!res.ok) return null;
+
+  return AUTH_ICON_PATH;
 }

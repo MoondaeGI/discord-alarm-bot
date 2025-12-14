@@ -5,7 +5,7 @@ import { timezoneToUtc, timezoneToKst, formatKst } from '../util/time';
 import { XMLParser } from 'fast-xml-parser';
 import { summarize as llmSummarize } from '../util/llm';
 import { logError, logFetchList } from '../util/log';
-import { getPreviewImage } from '../util/thumnail';
+import { getAuthIcon, getPreviewImage } from '../util/thumnail';
 
 const MandiantEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 30, // 30분
@@ -211,7 +211,7 @@ ${JSON.stringify(
     const embed = new EmbedBuilder()
       .setAuthor({
         name: 'Mandiant Research',
-        iconURL: 'https://www.mandiant.com/wp-content/uploads/2021/08/Mandiant-logo-RGB.svg',
+        iconURL: (await getAuthIcon()) ?? undefined,
       })
       .setTitle(payload.title)
       .setImage(payload.previewImage)

@@ -7,6 +7,7 @@ import { summarize as llmSummarize } from '../util/llm';
 import { logError, logFetchList } from '../util/log';
 import { NvdCveItem } from '../types';
 import { getCweKoById } from '../util/cwe';
+import { getAuthIcon } from '../util/thumnail';
 
 export type CveEventType = 'NEW' | 'MODIFIED';
 
@@ -153,7 +154,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
         ? new EmbedBuilder()
             .setAuthor({
               name: 'NVD CVE',
-              iconURL: 'https://nvd.nist.gov/images/nvd_logo.png',
+              iconURL: (await getAuthIcon()) ?? undefined,
             })
             .setTitle(`${payload.cve.id}`)
             .setURL(payload.link)
@@ -200,7 +201,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
         : new EmbedBuilder()
             .setAuthor({
               name: 'NVD CVE',
-              iconURL: 'https://nvd.nist.gov/images/nvd_logo.png',
+              iconURL: (await getAuthIcon()) ?? undefined,
             })
             .setFooter({ text: 'NVD CVE' });
 
