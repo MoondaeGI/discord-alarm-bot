@@ -4,7 +4,7 @@ import { Client, GatewayIntentBits as Intents } from 'discord.js';
 
 import { CveEvent, HackerNewsEvent, MandiantEvent } from './events';
 import type { Event } from './events/event';
-import { logError, logInfo } from './util/log';
+import { logError, logInfo, logMem } from './util/log';
 import { registerEvents } from './handler';
 import http from 'http';
 import path from 'path';
@@ -73,7 +73,9 @@ function getMimeType(filePath: string) {
 // main entry point
 async function main() {
   try {
+    logMem('before initCwe');
     await initCwe(path.resolve(process.cwd(), 'data', 'cwe', 'cwec_v4.19.xml'));
+    logMem('after initCwe');
     logInfo('CWE map initialized');
   } catch (err) {
     logError('Failed to initialize CWE map:', err);

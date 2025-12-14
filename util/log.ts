@@ -1,4 +1,5 @@
 import { timezoneToKst } from './time';
+import v8 from 'v8';
 
 const colors = {
   reset: '\x1b[0m',
@@ -84,5 +85,17 @@ export function logCommand(commandName: string, message: string, data?: unknown)
 export function logFetchList(url: string, status: number, listLength: number) {
   console.log(
     `${tag(`[${time()}]`)}${tag('[FETCH][LIST]', 'yellow')} ${status} ${url} | items=${listLength}`,
+  );
+}
+
+export function logMem(tag: string) {
+  const mu = process.memoryUsage();
+  const hs = v8.getHeapStatistics();
+  const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
+
+  logInfo(
+    `[MEM ${tag}] rss=${mb(mu.rss)}MB heapUsed=${mb(mu.heapUsed)}MB heapTotal=${mb(mu.heapTotal)}MB ` +
+      `ext=${mb(mu.external)}MB arrBuf=${mb(mu.arrayBuffers)}MB ` +
+      `heapLimit=${mb(hs.heap_size_limit)}MB`,
   );
 }
