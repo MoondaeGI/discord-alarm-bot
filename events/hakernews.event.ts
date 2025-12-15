@@ -9,7 +9,7 @@ import { getAuthIcon, getPreviewImage } from '../util/thumnail';
 const HackerNewsEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 5, // 5분마다
   url: 'https://hn.algolia.com/api/v1/search?tags=front_page',
-  discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
+  discordChannelId: process.env.DISCORD_NEWS_ALARM_ID ?? '',
   timezone: 'UTC',
 };
 

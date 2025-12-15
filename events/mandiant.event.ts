@@ -10,7 +10,7 @@ import { getAuthIcon, getPreviewImage } from '../util/thumnail';
 const MandiantEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 30, // 30분
   url: 'https://feeds.feedburner.com/threatintelligence/pvexyqv7v0v',
-  discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
+  discordChannelId: process.env.DISCORD_NEWS_ALARM_ID ?? '',
   timezone: 'UTC',
 };
 

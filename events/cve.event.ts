@@ -21,7 +21,7 @@ export type CveEventType = 'NEW' | 'MODIFIED';
 const CveEventOptions: EventOptions = {
   intervalMs: 1000 * 60 * 10,
   url: 'https://services.nvd.nist.gov/rest/json/cves/2.0',
-  discordChannelId: process.env.DISCORD_CHANNEL_ID ?? '',
+  discordChannelId: process.env.DISCORD_CVE_ALARM_ID ?? '',
   timezone: 'UTC',
 };
 
