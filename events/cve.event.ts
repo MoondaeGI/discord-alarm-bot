@@ -1,4 +1,4 @@
-import { EmbedBuilder } from '@discordjs/builders';
+import { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from '@discordjs/builders';
 import {
   AlarmWindow,
   DiscordOutbound,
@@ -15,6 +15,7 @@ import { NvdCveItem } from '../types';
 import { getCweKoById } from '../util/cwe';
 import { getAuthIcon } from '../util/thumnail';
 import { FilteredDetail, filterSignificantDetails } from '../data/cve/modified';
+import { ButtonStyle } from 'discord.js';
 
 export type CveEventType = 'NEW' | 'MODIFIED';
 
@@ -313,7 +314,11 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
             )
             .setFooter({ text: 'NVD CVE' });
 
-    return { embeds: [embed] };
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('상세 보기').setURL(payload.link),
+    );
+
+    return { embeds: [embed], components: [row] };
   }
 }
 
