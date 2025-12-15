@@ -27,6 +27,14 @@ export const todoSendCommand = {
 export const todoAddCommand = {
   name: 'todo-add',
   description: '할거 목록 추가해주기',
+  options: [
+    {
+      name: 'text',
+      description: '추가할 할 일 내용',
+      type: 3, // STRING
+      required: true,
+    },
+  ],
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply();
     const todoText = interaction.options.getString('text') ?? '';
@@ -35,7 +43,7 @@ export const todoAddCommand = {
       await addTodo(todoText);
       await interaction.editReply('할거 목록 추가되었어요!');
 
-      logCommand('todo-add', todoText);
+      logCommand('[TODO ADD]', todoText);
     } catch (error) {
       await interaction.editReply('할거 목록 추가 실패했어요...');
       logError('[TODO ADD]', error);
@@ -46,6 +54,14 @@ export const todoAddCommand = {
 export const todoRemoveCommand = {
   name: 'todo-remove',
   description: '할거 목록 삭제해주기',
+  options: [
+    {
+      name: 'id',
+      description: '삭제할 할 일 아이디',
+      type: 4, // INTEGER
+      required: true,
+    },
+  ],
   execute: async (interaction: ChatInputCommandInteraction) => {
     await interaction.deferReply();
 
