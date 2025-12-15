@@ -80,7 +80,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
           const publishedAtUtc = new Date(hit.created_at);
 
           const t = publishedAtUtc.getTime();
-          // if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
+          if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
 
           const payload = await this.buildPayload(hit);
           if (payload) payloads.push(payload);
