@@ -189,7 +189,6 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
     const rawTitle = (payload.title ?? '').trim();
     const title =
       rawTitle.length > 256 ? `${rawTitle.slice(0, 253)}...` : rawTitle || 'Untitled (Hacker News)';
-    const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
 
     const embed = new EmbedBuilder()
       .setAuthor({
@@ -224,10 +223,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
       .setTimestamp(payload.publishedAt)
       .setColor(0xff6600); // HN 브랜드 색상
 
-    return {
-      content: payload.link,
-      embeds: [embed],
-    };
+    return { embeds: [embed] };
   }
 }
 

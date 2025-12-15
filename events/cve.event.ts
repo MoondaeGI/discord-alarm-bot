@@ -15,7 +15,6 @@ import { NvdCveItem } from '../types';
 import { getCweKoById } from '../util/cwe';
 import { getAuthIcon } from '../util/thumnail';
 import { FilteredDetail, filterSignificantDetails } from '../data/cve/modified';
-import { ButtonStyle } from 'discord.js';
 
 export type CveEventType = 'NEW' | 'MODIFIED';
 
