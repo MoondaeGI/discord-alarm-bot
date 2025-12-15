@@ -16,6 +16,7 @@ export const todoSendCommand = {
 
       const todoList = todos.map((todo) => `- ${todo.text}`).join('\n');
       await interaction.editReply(`주인님이 이번에 추가한 내용은...\n${todoList}`);
+      logCommand('[TODO SEND]', `${todoList}`);
     } catch (error) {
       await interaction.editReply('할거 목록 출력 실패했어요...');
       logError('[TODO SEND]', error);
