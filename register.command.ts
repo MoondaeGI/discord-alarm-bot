@@ -1,8 +1,14 @@
 import { REST, Routes } from 'discord.js';
-import { nanamiCommand, pingCommand } from './commands';
+import {
+  nanamiCommand,
+  pingCommand,
+  todoAddCommand,
+  todoSendCommand,
+  todoRemoveCommand,
+} from './commands';
 import 'dotenv/config';
 
-const commands = [pingCommand, nanamiCommand];
+const commands = [pingCommand, nanamiCommand, todoAddCommand, todoSendCommand, todoRemoveCommand];
 
 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN!);
 
