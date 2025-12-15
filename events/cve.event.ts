@@ -315,7 +315,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
             .setFooter({ text: 'NVD CVE' });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('상세 보기').setURL(payload.link),
+      new ButtonBuilder().setStyle(ButtonStyle.Primary).setLabel('상세 보기').setURL(payload.link),
     );
 
     return { embeds: [embed], components: [row] };
