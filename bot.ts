@@ -9,7 +9,13 @@ import { registerEvents } from './handler';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
-import { nanamiCommand, pingCommand } from './commands';
+import {
+  nanamiCommand,
+  pingCommand,
+  todoAddCommand,
+  todoRemoveCommand,
+  todoSendCommand,
+} from './commands';
 import { initCwe } from './config/cwe.config';
 
 const port = process.env.PORT || 3000;
@@ -118,6 +124,15 @@ async function main() {
       return;
     } else if (interaction.commandName === 'nanami') {
       await nanamiCommand.execute(interaction);
+      return;
+    } else if (interaction.commandName === 'todo-add') {
+      await todoAddCommand.execute(interaction);
+      return;
+    } else if (interaction.commandName === 'todo-send') {
+      await todoSendCommand.execute(interaction);
+      return;
+    } else if (interaction.commandName === 'todo-remove') {
+      await todoRemoveCommand.execute(interaction);
       return;
     }
   });
