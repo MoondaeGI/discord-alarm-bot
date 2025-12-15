@@ -94,7 +94,7 @@ export function logMem(tag: string) {
   const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
 
   logInfo(
-    `[MEM ${tag}] rss=${mb(mu.rss)}MB heapUsed=${mb(mu.heapUsed)}MB heapTotal=${mb(mu.heapTotal)}MB ` +
+    `[MEM][${tag}] rss=${mb(mu.rss)}MB heapUsed=${mb(mu.heapUsed)}MB heapTotal=${mb(mu.heapTotal)}MB ` +
       `ext=${mb(mu.external)}MB arrBuf=${mb(mu.arrayBuffers)}MB ` +
       `heapLimit=${mb(hs.heap_size_limit)}MB`,
   );
