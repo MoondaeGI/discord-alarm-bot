@@ -42,31 +42,53 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
   public readonly options = HackerNewsEventOptions;
 
   async alarm(ctx: AlarmWindow): Promise<HackerNewsPayload[]> {
-    const res = await fetch(this.options.url); // front_page
-    if (!res.ok) throw new Error(`HackerNews API error: ${res.status}`);
-
-    const data = await res.json();
-    const hits = Array.isArray(data.hits) ? data.hits : [];
-    logFetchList(this.options.url, res.status, hits.length);
-
+    const urls = [
+      this.options.url, // front_page
+      buildHnSearchUrl(
+        'security OR vulnerability OR exploit OR CVE OR 0day OR "0-day" OR ransomware OR malware OR RCE OR XSS',
+        ctx.windowStartUtc,
+      ),
+      buildHnSearchUrl(
+        'AI OR LLM OR GPT OR transformer OR diffusion OR RAG OR "vector database" OR inference',
+        ctx.windowStartUtc,
+      ),
+      buildHnSearchUrl(
+        'kubernetes OR linux OR compiler OR "open source" OR postgres OR redis OR wasm OR "distributed system" OR performance',
+        ctx.windowStartUtc,
+      ),
+    ];
+    // 병렬 fetch
     const payloads: HackerNewsPayload[] = [];
-    for (const hit of hits) {
-      const title = hit.title ?? hit.story_title ?? '';
-      const link =
-        hit.url ?? hit.story_url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
-      // 기술/AI/보안 글만 필터링
-      if (!isTechArticle(title, link)) continue;
+    await Promise.all(
+      urls.map(async (u) => {
+        const res = await fetch(u);
+        if (!res.ok) throw new Error(`HackerNews API error: ${res.status} (${u})`);
+        const data = await res.json();
+        const hits: HackerNewsApiHit[] = Array.isArray(data.hits) ? data.hits : [];
+        logFetchList(u, res.status, hits.length);
 
-      if (!hit.created_at_i) continue;
-      const publishedAtUtc = new Date(hit.created_at_i * 1000);
+        for (const hit of hits) {
+          const title = hit.title ?? hit.story_title ?? '';
+          const link =
+            hit.url ?? hit.story_url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
-      const t = publishedAtUtc.getTime();
-      if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
+          // 기술/AI/보안 글만 필터링
+          // if (!isTechArticle(title, link)) continue;
 
-      const payload = await this.buildPayload(hit);
-      if (payload) payloads.push(payload);
-    }
+          if (!hit.created_at) continue;
+          const publishedAtUtc = new Date(hit.created_at);
+
+          const t = publishedAtUtc.getTime();
+          // if (t < ctx.windowStartUtc.getTime() || t >= ctx.windowEndUtc.getTime()) continue;
+
+          const payload = await this.buildPayload(hit);
+          if (payload) payloads.push(payload);
+
+          if (payloads.length >= 2) break;
+        }
+      }),
+    );
 
     return payloads;
   }
@@ -325,4 +347,20 @@ function isTechByTitle(title: string): boolean {
 
 export function isTechArticle(title: string, url: string): boolean {
   return isTechByUrl(url) || isTechByTitle(title);
+}
+
+function buildHnSearchUrl(q: string, windowStartUtc: Date) {
+  const startSec = Math.floor(windowStartUtc.getTime() / 1000);
+
+  // search_by_date: 최신순 정렬. tags=story로 “글”만.
+  // numericFilters로 시간 컷 + (원하면 points 컷도 가능)
+  const base = 'https://hn.algolia.com/api/v1/search_by_date';
+  const params = new URLSearchParams({
+    tags: 'story',
+    query: q,
+    hitsPerPage: '50', // 필요하면 조정
+    numericFilters: `created_at_i>${startSec}`, // ✅ window start를 API에 반영
+  });
+
+  return `${base}?${params.toString()}`;
 }
