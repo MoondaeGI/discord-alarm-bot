@@ -1,13 +1,20 @@
 import { EmbedBuilder } from '@discordjs/builders';
-import { AlarmWindow, DiscordOutbound, EventOptions, EventPayload } from '../types';
+import {
+  AlarmWindow,
+  DiscordOutbound,
+  EventOptions,
+  EventPayload,
+  NvdCveChangeWrapper,
+} from '../types';
 import { Event } from './event';
 import { severityToColor } from '../util/color';
-import { timezoneToKst, formatKst } from '../util/time';
+import { formatKst } from '../util/time';
 import { summarize as llmSummarize } from '../util/llm';
 import { logError, logFetchList } from '../util/log';
 import { NvdCveItem } from '../types';
 import { getCweKoById } from '../util/cwe';
 import { getAuthIcon } from '../util/thumnail';
+import { FilteredDetail, filterSignificantDetails } from '../data/cve/modified';
 
 export type CveEventType = 'NEW' | 'MODIFIED';
 
@@ -23,6 +30,9 @@ interface CvePayload extends EventPayload, NvdCveItem {
   description: string;
   vectorSummary: string;
   referenceDigest: string;
+  modifiedDetails?: FilteredDetail[];
+  modifiedSummary?: string;
+  modifiedDate?: Date;
 }
 
 export interface NvdCvesApiResponse {
@@ -33,7 +43,8 @@ export interface NvdCvesApiResponse {
   version?: string;
   timestamp?: string;
 
-  vulnerabilities: NvdCveItem[];
+  cveChanges?: NvdCveChangeWrapper[];
+  vulnerabilities?: NvdCveItem[];
 }
 
 /**
@@ -68,27 +79,80 @@ class CveEvent implements Event<CvePayload> {
   }
 
   async alarm(ctx: AlarmWindow): Promise<CvePayload[]> {
-    const url = await setPublishedDateUrl(this.options.url, ctx);
+    const payloads: CvePayload[] = [];
 
-    const data = await parseJson(url);
-    const payloads = data.vulnerabilities as NvdCveItem[];
+    const publicshedUrl = await setPublishedDateUrl(this.options.url, ctx);
 
-    return await Promise.all(payloads.map((item) => this.buildPayload({ ...item, type: 'NEW' })));
+    const publicshedData = await parseJson(publicshedUrl);
+    const publishItems = publicshedData.vulnerabilities as NvdCveItem[];
+    const publishedPayloads = await Promise.all(
+      publishItems.map((item) => this.buildPayload({ ...item, type: 'NEW' })),
+    );
+
+    const modifiedUrl = await setModifiedDateUrl(this.options.url, ctx);
+    const modifiedData = await parseJson(modifiedUrl);
+    const modifiedItems = modifiedData.vulnerabilities as NvdCveItem[];
+    const modifiedPayloads = await Promise.all(
+      modifiedItems.map((item) => this.buildPayload({ ...item, type: 'MODIFIED' })),
+    );
+
+    payloads.push(...publishedPayloads, ...modifiedPayloads);
+
+    return payloads;
   }
 
   // CvePayload 빌더
   async buildPayload(input: NvdCveItem | any): Promise<CvePayload> {
     const summary = await this.summarize(input);
 
-    return {
+    const payload: CvePayload = {
       type: input.type,
-      link: 'https://nvd.nist.gov/vuln/detail/' + input.cve.id,
       ...input,
+      link: 'https://nvd.nist.gov/vuln/detail/' + input.cve.id,
       publishedAt: new Date(input.cve.published ?? ''),
       summary: summary.summary,
       vectorSummary: summary.vectorSummary,
       referenceDigest: summary.referenceDigest,
     };
+
+    if (input.type === 'MODIFIED') {
+      const url = `https://services.nvd.nist.gov/rest/json/cvehistory/2.0?cveId=${input.cve.id}`;
+      const data = await parseJson(url);
+
+      const changes = data.cveChanges;
+      if (changes?.length) {
+        // 2) 이번 이벤트에서 push된 detail만 필터
+        const filteredDetails = filterSignificantDetails(changes[0].change.details);
+
+        // 여기서 filteredDetails만 사용
+        payload.modifiedDetails = filteredDetails;
+        payload.modifiedDate = new Date(changes[0].change.created);
+
+        const prompt = `
+        다음은 CVE 변경 이력에서 이번 이벤트로 실제로 변경(push)된 내용만이다.
+
+- 전체 CVE 설명을 다시 쓰지 마라.
+- 과거 상태를 추정하지 마라.
+- 이번 변경으로 무엇이 어떻게 달라졌는지만 요약하라.
+
+아래 변경 내용을 한국어로 2~3줄로 요약하라.
+가능하면 보안 영향(위험도 상승/하락, 대응 필요 여부)을 한 줄로 덧붙여라.
+
+[변경 이벤트]
+cveid: ${payload.cve.id}
+eventName: ${changes[0].change.eventName}
+created: ${changes[0].change.created}
+변경 내용: ${JSON.stringify(filteredDetails, null, 2)}
+        `;
+
+        const content = await llmSummarize(prompt);
+        if (!content) throw new Error('빈 응답');
+
+        payload.modifiedSummary = content;
+      }
+    }
+
+    return payload;
   }
 
   /**
@@ -144,7 +208,6 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
 
   // 디스코드 알람 포맷
   async format(payload: CvePayload): Promise<DiscordOutbound | null> {
-    const publishedAtKst = timezoneToKst(payload.publishedAt, this.options.timezone);
     const source = normalizeDomain(payload.cve.sourceIdentifier);
 
     const cweKo = await getCweKoById(payload.cve.weaknesses?.[0]?.description?.[0]?.value ?? '');
@@ -153,7 +216,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
       payload.type === 'NEW'
         ? new EmbedBuilder()
             .setAuthor({
-              name: 'NVD CVE',
+              name: '신규 NVD CVE',
               iconURL: (await getAuthIcon()) ?? undefined,
             })
             .setTitle(`${payload.cve.id}`)
@@ -198,9 +261,56 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
             .setFooter({ text: 'NVD CVE' })
         : new EmbedBuilder()
             .setAuthor({
-              name: 'NVD CVE',
+              name: '변경 NVD CVE',
               iconURL: (await getAuthIcon()) ?? undefined,
             })
+            .setTitle(`${payload.cve.id}`)
+            .setURL(payload.link)
+            .setColor(
+              severityToColor(
+                payload.cve.metrics?.cvssMetricV40?.[0]?.cvssData.baseSeverity ?? 'LOW',
+              ),
+            )
+            .setTimestamp(new Date())
+            .addFields(
+              {
+                name: '제공자',
+                value: source,
+              },
+              {
+                name: '취약점',
+                value: ` - ${payload.cve.weaknesses?.[0]?.description?.[0]?.value}\n - 명칭: ${cweKo?.nameEn ?? ''}\n - 설명: ${cweKo?.descriptionKo ?? ''}`,
+              },
+              {
+                name: 'CVSS',
+                value: ` - 점수: ${payload.cve.metrics?.cvssMetricV40?.[0]?.cvssData.baseScore ?? 0}\n - 요약: ${payload.vectorSummary}`,
+                inline: true,
+              },
+              {
+                name: '내용',
+                value: payload.summary,
+              },
+              {
+                name: '수정 내용',
+                value: payload.modifiedSummary ?? '',
+              },
+              {
+                name: '수정일',
+                value: `${this.options.timezone}/ ${formatKst(payload.modifiedDate ?? new Date())}`,
+              },
+              {
+                name: '발행일',
+                value: `${this.options.timezone}/ ${formatKst(payload.publishedAt)}`,
+              },
+              {
+                name: '참고 정보',
+                value: payload.referenceDigest,
+              },
+              {
+                name: 'URL',
+                value: payload.link,
+              },
+            )
             .setFooter({ text: 'NVD CVE' });
 
     return { embeds: [embed] };
@@ -225,6 +335,16 @@ async function setPublishedDateUrl(url: string, ctx: AlarmWindow): Promise<strin
   const newUrl = new URL(url);
   newUrl.searchParams.set('pubStartDate', ctx.windowStartUtc.toISOString());
   newUrl.searchParams.set('pubEndDate', ctx.windowEndUtc.toISOString());
+  newUrl.searchParams.set('startIndex', String(0));
+  newUrl.searchParams.set('resultsPerPage', String(200));
+
+  return newUrl.toString();
+}
+
+async function setModifiedDateUrl(url: string, ctx: AlarmWindow): Promise<string> {
+  const newUrl = new URL(url);
+  newUrl.searchParams.set('lastModStartDate', ctx.windowStartUtc.toISOString());
+  newUrl.searchParams.set('lastModEndDate', ctx.windowEndUtc.toISOString());
   newUrl.searchParams.set('startIndex', String(0));
   newUrl.searchParams.set('resultsPerPage', String(200));
 

@@ -93,3 +93,39 @@ export interface CveReference {
   url: string;
   source: string;
 }
+
+export interface NvdCveChangeWrapper {
+  change: NvdCveChange;
+}
+
+export interface NvdCveChange {
+  cveId: string; // CVE-YYYY-NNNNN
+  eventName: string; // e.g. "New CVE Received"
+  cveChangeId: string; // UUID
+  sourceIdentifier: string; // e.g. cna@vuldb.com
+  created: string; // ISO-8601
+  details: NvdCveChangeDetail[];
+}
+
+export interface NvdCveChangeDetail {
+  action: 'Added' | 'Updated' | 'Removed';
+  type: NvdCveChangeDetailType;
+  newValue?: string;
+  oldValue?: string;
+}
+
+export type NvdCveChangeDetailType =
+  | 'Description'
+  | 'CVSS V4.0'
+  | 'CVSS V3.1'
+  | 'CVSS V3.0'
+  | 'CVSS V2'
+  | 'CWE'
+  | 'Reference'
+  | 'CPE'
+  | 'Configuration'
+  | 'Vendor Comment'
+  | 'Weakness'
+  | 'Exploit'
+  | 'Impact'
+  | string; // future-proof
