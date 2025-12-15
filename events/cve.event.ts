@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder } from '@discordjs/builders';
+import { EmbedBuilder } from '@discordjs/builders';
 import {
   AlarmWindow,
   DiscordOutbound,
@@ -314,11 +314,7 @@ ${JSON.stringify(payload.cve.references ?? [], null, 2)}
             )
             .setFooter({ text: 'NVD CVE' });
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setStyle(ButtonStyle.Primary).setLabel('상세 보기').setURL(payload.link),
-    );
-
-    return { embeds: [embed], components: [row] };
+    return { embeds: [embed] };
   }
 }
 

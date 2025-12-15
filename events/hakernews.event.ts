@@ -74,7 +74,7 @@ export class HackerNewsEvent implements Event<HackerNewsPayload> {
             hit.url ?? hit.story_url ?? `https://news.ycombinator.com/item?id=${hit.objectID}`;
 
           // 기술/AI/보안 글만 필터링
-          // if (!isTechArticle(title, link)) continue;
+          if (!isTechArticle(title, link)) continue;
 
           if (!hit.created_at) continue;
           const publishedAtUtc = new Date(hit.created_at);
