@@ -88,15 +88,15 @@ class CveEvent implements Event<CvePayload> {
     const publishedPayloads = await Promise.all(
       publishItems.map((item) => this.buildPayload({ ...item, type: 'NEW' })),
     );
-
+    /*
     const modifiedUrl = await setModifiedDateUrl(this.options.url, ctx);
     const modifiedData = await parseJson(modifiedUrl);
     const modifiedItems = modifiedData.vulnerabilities as NvdCveItem[];
     const modifiedPayloads = await Promise.all(
       modifiedItems.map((item) => this.buildPayload({ ...item, type: 'MODIFIED' })),
     );
-
-    payloads.push(...publishedPayloads, ...modifiedPayloads);
+*/
+    payloads.push(...publishedPayloads);
 
     return payloads;
   }
